@@ -1,10 +1,6 @@
 <div align="center">
 
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M16 9v6a5 5 0 0 1 -10 0v-4l3 3"/>
-  <path d="M16 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
-  <path d="M16 5v-2"/>
-</svg>
+<img src="admin/public/favicon.svg" alt="Webhook System Logo" width="120" height="120">
 
 # Webhook System
 
@@ -176,6 +172,44 @@ npm run db:migrate   # Reapply migrations
 └── migrations/         # D1 database migrations
 ```
 
+## Acknowledgments
+
+This project is built with amazing open-source technologies:
+
+### Core Technologies
+- [Hono](https://hono.dev/) - Ultrafast web framework for Cloudflare Workers
+- [Rust](https://www.rust-lang.org/) & [worker-rs](https://github.com/cloudflare/workers-rs) - High-performance webhook ingestion
+- [Cloudflare Workers](https://workers.cloudflare.com/) - Serverless platform
+- [Cloudflare D1](https://developers.cloudflare.com/d1/) - SQLite at the edge
+- [React 19](https://react.dev/) - UI library
+
+### Development Tools
+- [TypeScript](https://www.typescriptlang.org/) - Type safety
+- [Drizzle ORM](https://orm.drizzle.team/) - Type-safe database queries
+- [Better Auth](https://www.better-auth.com/) - Authentication system
+- [Wrangler](https://developers.cloudflare.com/workers/wrangler/) - Cloudflare Workers CLI
+- [esbuild](https://esbuild.github.io/) - Fast JavaScript bundler
+
+### UI & Styling
+- [Tailwind CSS v4](https://tailwindcss.com/) - Utility-first CSS framework
+- [shadcn/ui](https://ui.shadcn.com/) - Re-usable UI components
+- [Tabler Icons](https://tabler.io/icons) - Beautiful open-source icons
+- [highlight.js](https://highlightjs.org/) - Syntax highlighting
+
+### Services
+- [Resend](https://resend.com/) - Email delivery
+- [React Email](https://react.email/) - Email templates
+
+Thank you to all maintainers and contributors of these projects! 🙏
+
 ## License
 
 MIT
+
+---
+
+<div align="center">
+
+Made with 💙💛 using Hono, Rust and Cloudflare Workers
+
+</div>
