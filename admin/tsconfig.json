@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["@cloudflare/workers-types"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/*"]
+    }
+  },
+  "include": ["src/**/*", "scripts/**/*", "../shared/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

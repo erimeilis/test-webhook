@@ -1,0 +1,43 @@
+name = "webhook-admin"
+main = "src/index.tsx"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+# Static assets
+[site]
+bucket = "./dist"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "webhook-db"
+database_id = "YOUR_D1_DATABASE_ID" # Replace after creating D1 database
+migrations_dir = "../migrations"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+
+# Development environment
+[env.dev]
+name = "webhook-admin-dev"
+vars = { ENVIRONMENT = "development" }
+
+# Production environment
+[env.production]
+name = "webhook-admin-prod"
+vars = { ENVIRONMENT = "production" }
+
+# KV namespace for sessions (Better Auth)
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "YOUR_KV_NAMESPACE_ID" # Replace after creating KV namespace
+
+# Secrets (set with: wrangler secret put SECRET_NAME)
+# - GOOGLE_CLIENT_ID
+# - GOOGLE_CLIENT_SECRET
+# - RESEND_API_KEY
+# - BETTER_AUTH_SECRET

@@ -1,0 +1,33 @@
+{
+  "name": "test-webhook",
+  "version": "0.1.0",
+  "description": "High-performance webhook ingestion and management system built on Cloudflare Workers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "npm run setup:admin && npm run setup:webhook",
+    "setup:admin": "cd admin && npm install",
+    "setup:webhook": "cd webhook-worker && cargo build",
+    "dev": "node scripts/dev-fullstack.js",
+    "deploy": "node scripts/deploy-fullstack.js",
+    "deploy:admin": "cd admin && npm run deploy",
+    "deploy:webhook": "cd webhook-worker && wrangler deploy",
+    "db:generate": "cd admin && npm run db:generate",
+    "db:migrate": "cd admin && npm run db:migrate",
+    "db:studio": "cd admin && npm run db:studio",
+    "db:seed": "cd admin && npm run db:seed",
+    "type-check": "cd admin && npm run type-check",
+    "lint": "cd admin && npm run lint",
+    "lint:fix": "cd admin && npm run lint:fix"
+  },
+  "keywords": [
+    "webhook",
+    "cloudflare",
+    "workers",
+    "rust",
+    "hono",
+    "react"
+  ],
+  "author": "Eri <eri@redshoes.pro>",
+  "license": "MIT"
+}

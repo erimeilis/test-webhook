@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Build output
+dist/
+.wrangler/
+.mf/
+.output/
+admin/dist/
+webhook-worker/target/
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment
+.env
+.dev.vars
+.env.local
+.env.production
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+.test-results/
+playwright-report/
+test-results/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+.drizzle/
+
+# Rust
+webhook-worker/Cargo.lock
+
+# Cloudflare
+.wrangler-shared/
+
+# Claude
+.claude/
+
+# Temporary files
+*.bak
+*.swp
+*.swo
+*~
+/admin/docs/
+/docs/
+/CLAUDE.md

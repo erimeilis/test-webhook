@@ -1,0 +1,12 @@
+# Local Development Secrets
+# Copy this file to .dev.vars and fill in your actual values
+
+# Google OAuth (from Google Cloud Console)
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-your-google-client-secret
+
+# Resend Email API (from resend.com)
+RESEND_API_KEY=re_your_resend_api_key
+
+# Better Auth Secret (generate with: openssl rand -base64 32)
+BETTER_AUTH_SECRET=your-generated-secret-here
