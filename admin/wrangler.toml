@@ -13,9 +13,15 @@ bucket = "./dist"
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"
-database_name = "webhook-db"
-database_id = "YOUR_D1_DATABASE_ID" # Replace after creating D1 database
+database_name = "test-webhook"
+database_id = "4b560545-0e26-4d08-9058-b72cebe26514" # Replace after creating D1 database
 migrations_dir = "../migrations"
+
+# KV namespace for Better Auth sessions
+# Create with: wrangler kv:namespace create SESSIONS
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "1d67d3e0047d4f29a42525d2406fde76" # Replace after creating KV namespace
 
 # Environment variables
 [vars]
@@ -31,13 +37,11 @@ vars = { ENVIRONMENT = "development" }
 name = "webhook-admin-prod"
 vars = { ENVIRONMENT = "production" }
 
-# KV namespace for sessions (Better Auth)
-[[kv_namespaces]]
-binding = "SESSIONS"
-id = "YOUR_KV_NAMESPACE_ID" # Replace after creating KV namespace
-
-# Secrets (set with: wrangler secret put SECRET_NAME)
+# Secrets (set via .dev.vars and uploaded automatically with npm run secrets:upload)
+# - BASE_URL (production URL for Better Auth OAuth callbacks)
 # - GOOGLE_CLIENT_ID
 # - GOOGLE_CLIENT_SECRET
 # - RESEND_API_KEY
+# - FROM_EMAIL
 # - BETTER_AUTH_SECRET
+# - WEBHOOK_WORKER_URL (production webhook ingestion endpoint)

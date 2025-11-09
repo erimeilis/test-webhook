@@ -5,6 +5,8 @@
  */
 
 import * as React from 'react'
+import { Table as ResponsiveTable, Thead, Tbody, Tr, Th, Td } from 'react-super-responsive-table'
+import 'react-super-responsive-table/dist/SuperResponsiveTableStyle.css'
 
 export interface TableColumn<T> {
   key: string
@@ -13,6 +15,7 @@ export interface TableColumn<T> {
   filterable?: boolean
   render?: (value: unknown, row: T) => React.ReactNode
   width?: string
+  className?: string
 }
 
 export interface TableProps<T> {
@@ -38,13 +41,6 @@ export function Table<T extends Record<string, unknown>>({
 }: TableProps<T>) {
   // Store all data as JSON in a data attribute for client-side manipulation
   const dataJson = JSON.stringify(data)
-
-  // Helper function to extract pixel width from Tailwind class (e.g., "w-[180px]" → "180px")
-  const extractWidth = (widthClass?: string): string | undefined => {
-    if (!widthClass) return undefined
-    const match = widthClass.match(/w-\[(\d+px)\]/)
-    return match ? match[1] : undefined
-  }
 
   return (
     <div className={`w-full ${className}`} data-table-container={tableId} data-all-data={dataJson}>
@@ -78,28 +74,24 @@ export function Table<T extends Record<string, unknown>>({
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto border border-border rounded-lg">
-        <table className="w-full table-fixed" data-table={tableId}>
-          <colgroup>
-            {columns.map((column) => (
-              <col key={column.key} className={column.width || ''} />
-            ))}
-          </colgroup>
-          <thead className="bg-muted/50 border-b border-border">
-            <tr>
+      <div className="border border-border rounded-lg">
+        <ResponsiveTable className="w-full" data-table={tableId}>
+          <Thead className="bg-muted/50 border-b border-border">
+            <Tr>
               {columns.map((column) => (
-                <th
+                <Th
                   key={column.key}
                   className={`text-left px-4 py-3 text-sm font-semibold ${
                     column.sortable ? 'cursor-pointer hover:bg-muted/70 select-none' : ''
-                  }`}
+                  } ${column.className || ''}`}
+                  style={column.width ? { width: column.width } : undefined}
                   data-sortable={column.sortable ? 'true' : undefined}
                   data-sort-key={column.key}
                 >
                   <div className="flex items-center gap-2">
                     <span>{column.label}</span>
                     {column.sortable && (
-                      <span className="text-muted-foreground" data-sort-icon={column.key}>
+                      <span className="text-muted-foreground flex-shrink-0" data-sort-icon={column.key}>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="14"
@@ -118,48 +110,43 @@ export function Table<T extends Record<string, unknown>>({
                       </span>
                     )}
                   </div>
-                </th>
+                </Th>
               ))}
-            </tr>
-          </thead>
-          <tbody data-table-body={tableId}>
+            </Tr>
+          </Thead>
+          <Tbody data-table-body={tableId}>
             {data.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-muted-foreground">
+              <Tr>
+                <Td colSpan={columns.length} className="px-4 py-12 text-center text-muted-foreground">
                   {emptyMessage}
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             ) : (
               data.map((row, rowIndex) => (
-                <tr
+                <Tr
                   key={rowIndex}
                   data-table-row
                   data-row-index={rowIndex}
                   className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
                 >
-                  {columns.map((column) => {
-                    const width = extractWidth(column.width)
-                    const cellStyle = width ? { width, maxWidth: width } : undefined
-
-                    return (
-                      <td
-                        key={column.key}
-                        className="px-4 py-3 text-sm overflow-hidden"
-                        style={cellStyle}
-                        data-column={column.key}
-                        data-value={String(row[column.key] ?? '')}
-                      >
-                        {column.render
-                          ? column.render(row[column.key], row)
-                          : String(row[column.key] ?? '')}
-                      </td>
-                    )
-                  })}
-                </tr>
+                  {columns.map((column) => (
+                    <Td
+                      key={column.key}
+                      className={`px-4 py-3 text-sm ${column.className || ''}`}
+                      style={column.width ? { width: column.width } : undefined}
+                      data-column={column.key}
+                      data-value={String(row[column.key] ?? '')}
+                    >
+                      {column.render
+                        ? column.render(row[column.key], row)
+                        : String(row[column.key] ?? '')}
+                    </Td>
+                  ))}
+                </Tr>
               ))
             )}
-          </tbody>
-        </table>
+          </Tbody>
+        </ResponsiveTable>
       </div>
 
       {/* Pagination controls and results count */}

@@ -294,49 +294,59 @@ export async function handleDashboard(c: AppContext) {
   const webhookWorkerUrl = c.env.WEBHOOK_WORKER_URL || 'http://localhost:5174'
 
   // Table columns configuration
-  // Order: Created At, Headers, Payload, Method, Size
+  // Order: Datetime, Headers, Payload, Method, Size
   const requestsColumns: TableColumn<WebhookData>[] = [
     {
       key: 'received_at',
-      label: 'Created At',
+      label: 'Datetime',
       sortable: true,
-      width: 'w-[180px]',
+      className: 'whitespace-nowrap',
       render: (value) => {
         const date = new Date((value as number) * 1000)
+
+        // Format date parts
+        const monthShort = date.toLocaleDateString('en-US', { month: 'short' })
+        const day = date.getDate()
+        const year = date.getFullYear()
+        const weekday = date.toLocaleDateString('en-US', { weekday: 'short' })
+        const time = date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        })
+
         return (
-          <span className="text-xs">
-            {date.toLocaleString()}
-          </span>
+          <div className="text-xs leading-tight whitespace-nowrap">
+            <div className="font-medium">{monthShort} {day}, {year}</div>
+            <div className="text-muted-foreground">{weekday}, {time}</div>
+          </div>
         )
       }
     },
     {
       key: 'headers',
       label: 'Headers',
-      width: 'w-[240px]',
+      className: 'whitespace-nowrap',
       render: (value) => {
         try {
           const headers = JSON.parse(String(value))
-          const headerEntries = Object.entries(headers)
-          const headerCount = headerEntries.length
+          const headerCount = Object.keys(headers).length
+          const preview = Object.entries(headers)
+            .slice(0, 2)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(', ')
+          const displayText = preview.length > 40 ? preview.substring(0, 40) + '...' : preview
 
           return (
-            <div className="max-w-full">
-              <details className="cursor-pointer group">
-                <summary className="list-none">
-                  <span className="text-xs text-muted-foreground truncate block">
-                    {headerCount} header{headerCount !== 1 ? 's' : ''}
-                    <span className="text-primary hover:underline ml-1">→</span>
-                  </span>
-                </summary>
-                <div className="mt-2 p-2 bg-muted rounded text-xs max-h-48 overflow-y-auto overflow-x-auto max-w-full">
-                  {headerEntries.map(([key, val], idx) => (
-                    <div key={idx} className="py-0.5 font-mono whitespace-nowrap">
-                      <span className="text-primary">{key}</span>: {String(val)}
-                    </div>
-                  ))}
-                </div>
-              </details>
+            <div
+              className="text-xs font-mono cursor-pointer hover:text-primary transition-colors"
+              data-headers={String(value)}
+              title="Click to view all headers"
+            >
+              <div className="text-muted-foreground">
+                {headerCount} header{headerCount !== 1 ? 's' : ''}
+              </div>
+              <div className="text-foreground truncate max-w-48">{displayText}</div>
             </div>
           )
         } catch {
@@ -347,65 +357,26 @@ export async function handleDashboard(c: AppContext) {
     {
       key: 'data',
       label: 'Payload',
-      width: 'w-[280px]',
       render: (value) => {
-        try {
-          const parsed = JSON.parse(String(value))
-          const jsonString = JSON.stringify(parsed)
-          const displayText = jsonString.length > 80 ? jsonString.substring(0, 80) : jsonString
-          const isTruncated = jsonString.length > 80
+        const stringValue = String(value)
+        const displayText = stringValue.length > 80 ? stringValue.substring(0, 80) + '...' : stringValue
 
-          return (
-            <div className="max-w-full">
-              <details className="cursor-pointer group">
-                <summary className="list-none">
-                  <span className="text-xs font-mono truncate block">
-                    {displayText}
-                    {isTruncated && (
-                      <span className="text-primary hover:underline ml-1">...</span>
-                    )}
-                  </span>
-                </summary>
-                {isTruncated && (
-                  <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto max-h-48 overflow-y-auto max-w-full">
-                    {JSON.stringify(parsed, null, 2)}
-                  </pre>
-                )}
-              </details>
-            </div>
-          )
-        } catch {
-          const textValue = String(value)
-          const displayText = textValue.length > 80 ? textValue.substring(0, 80) : textValue
-          const isTruncated = textValue.length > 80
-
-          return (
-            <div className="max-w-full">
-              <details className="cursor-pointer group">
-                <summary className="list-none">
-                  <span className="text-xs text-muted-foreground truncate block">
-                    {displayText}
-                    {isTruncated && (
-                      <span className="text-primary hover:underline ml-1">...</span>
-                    )}
-                  </span>
-                </summary>
-                {isTruncated && (
-                  <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap max-w-full">
-                    {textValue}
-                  </pre>
-                )}
-              </details>
-            </div>
-          )
-        }
+        return (
+          <div
+            className="text-xs font-mono cursor-pointer hover:text-primary transition-colors truncate max-w-xl"
+            data-payload={stringValue}
+            title="Click to view full payload"
+          >
+            {displayText}
+          </div>
+        )
       }
     },
     {
       key: 'method',
       label: 'Method',
       sortable: true,
-      width: 'w-[100px]',
+      className: 'whitespace-nowrap max-md:hidden',
       render: (value) => (
         <Badge
           variant={value === 'POST' ? 'default' : 'secondary'}
@@ -419,12 +390,12 @@ export async function handleDashboard(c: AppContext) {
       key: 'size_bytes',
       label: 'Size',
       sortable: true,
-      width: 'w-[100px]',
+      className: 'whitespace-nowrap max-md:hidden',
       render: (value) => {
         const bytes = value as number
-        if (bytes < 1024) return <span className="text-xs">{bytes} B</span>
-        if (bytes < 1024 * 1024) return <span className="text-xs">{(bytes / 1024).toFixed(1)} KB</span>
-        return <span className="text-xs">{(bytes / 1024 / 1024).toFixed(2)} MB</span>
+        if (bytes < 1024) return <span className="text-xs whitespace-nowrap">{bytes} B</span>
+        if (bytes < 1024 * 1024) return <span className="text-xs whitespace-nowrap">{(bytes / 1024).toFixed(1)} KB</span>
+        return <span className="text-xs whitespace-nowrap">{(bytes / 1024 / 1024).toFixed(2)} MB</span>
       }
     }
   ]

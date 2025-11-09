@@ -9,7 +9,9 @@ import {
   showConfirmModal,
   showErrorModal,
   showCodeExamplesModal,
-  showShareWebhookModal
+  showShareWebhookModal,
+  showHeadersModal,
+  showPayloadModal
 } from './modal'
 
 // ========================================
@@ -103,6 +105,29 @@ function setupEventListeners() {
       case 'toggle-user-menu':
         handleToggleUserMenu()
         break
+    }
+  })
+
+  // Headers and Payload modal clicks
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    const headersCell = target.closest('[data-headers]') as HTMLElement
+    const payloadCell = target.closest('[data-payload]') as HTMLElement
+
+    if (headersCell) {
+      const headers = headersCell.getAttribute('data-headers')
+      if (headers) {
+        showHeadersModal(headers)
+      }
+      return
+    }
+
+    if (payloadCell) {
+      const payload = payloadCell.getAttribute('data-payload')
+      if (payload) {
+        showPayloadModal(payload)
+      }
+      return
     }
   })
 

@@ -1,12 +1,27 @@
 # Local Development Secrets
 # Copy this file to .dev.vars and fill in your actual values
 
-# Google OAuth (from Google Cloud Console)
+# Base URL for Better Auth (your production worker URL)
+# For local dev: http://localhost:5173
+# For production: https://your-worker-name.your-subdomain.workers.dev
+BASE_URL=https://your-worker-name.your-subdomain.workers.dev
+
+# Google OAuth - Get from: https://console.cloud.google.com/
+# 1. Create OAuth 2.0 Client ID
+# 2. Add authorized redirect URI: https://your-worker-name.your-subdomain.workers.dev/api/auth/callback/google
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-your-google-client-secret
 
-# Resend Email API (from resend.com)
+# Resend Email API - Get from: https://resend.com/api-keys
 RESEND_API_KEY=re_your_resend_api_key
+
+# Email sender address (must be from verified domain in Resend)
+FROM_EMAIL=noreply@yourdomain.com
 
 # Better Auth Secret (generate with: openssl rand -base64 32)
 BETTER_AUTH_SECRET=your-generated-secret-here
+
+# Webhook Worker URL (production webhook ingestion endpoint)
+# For local dev: http://localhost:5174
+# For production: https://your-webhook-worker-name.your-subdomain.workers.dev
+WEBHOOK_WORKER_URL=https://your-webhook-worker-name.your-subdomain.workers.dev

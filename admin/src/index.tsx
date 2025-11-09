@@ -6,6 +6,8 @@
 import { Hono } from 'hono'
 import { reactRenderer } from '@hono/react-renderer'
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
+// @ts-expect-error - This is provided by Wrangler
+import manifest from '__STATIC_CONTENT_MANIFEST'
 import type { Bindings, Variables } from '@/types/hono'
 import { createAuth } from '@/lib/auth'
 import { createEmailService } from '@/lib/email'
@@ -175,10 +177,11 @@ app.get('*', async (c) => {
         },
         {
           ASSET_NAMESPACE: c.env.__STATIC_CONTENT,
-          ASSET_MANIFEST: {},
+          ASSET_MANIFEST: JSON.parse(manifest),
         }
       )
-    } catch {
+    } catch (error) {
+      console.error('Asset error:', error)
       return new Response('Asset not found', { status: 404 })
     }
   }

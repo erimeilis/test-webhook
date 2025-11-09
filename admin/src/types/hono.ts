@@ -6,6 +6,8 @@ export type Bindings = {
   DB: D1Database
   SESSIONS: KVNamespace
   __STATIC_CONTENT: KVNamespace
+  __STATIC_CONTENT_MANIFEST: string
+  BASE_URL: string
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
   RESEND_API_KEY: string

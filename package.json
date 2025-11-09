@@ -12,6 +12,8 @@
     "deploy": "node scripts/deploy-fullstack.js",
     "deploy:admin": "cd admin && npm run deploy",
     "deploy:webhook": "cd webhook-worker && wrangler deploy",
+    "kv:setup": "node scripts/setup-kv.js",
+    "secrets:upload": "node scripts/upload-secrets.js",
     "db:generate": "cd admin && npm run db:generate",
     "db:migrate": "cd admin && npm run db:migrate",
     "db:studio": "cd admin && npm run db:studio",
@@ -29,5 +31,8 @@
     "react"
   ],
   "author": "Eri <eri@redshoes.pro>",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.46.0"
+  }
 }

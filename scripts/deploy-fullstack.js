@@ -44,27 +44,42 @@ async function main() {
 
   try {
     // Step 1: Type checking
-    console.log('\n📝 Step 1/5: Running type check...');
+    console.log('\n📝 Step 1/8: Running type check...');
     await runCommand('npm', ['run', 'type-check'], { cwd: './admin' });
     console.log('✅ Type check passed');
 
     // Step 2: Linting
-    console.log('\n🔍 Step 2/5: Running linter...');
+    console.log('\n🔍 Step 2/8: Running linter...');
     await runCommand('npm', ['run', 'lint'], { cwd: './admin' });
     console.log('✅ Lint check passed');
 
     // Step 3: Build CSS
-    console.log('\n🎨 Step 3/5: Building CSS...');
+    console.log('\n🎨 Step 3/8: Building CSS...');
     await runCommand('npm', ['run', 'build:css'], { cwd: './admin' });
     console.log('✅ CSS built successfully');
 
     // Step 4: Build client
-    console.log('\n📦 Step 4/5: Building client bundle...');
+    console.log('\n📦 Step 4/8: Building client bundle...');
     await runCommand('npm', ['run', 'build:client'], { cwd: './admin' });
     console.log('✅ Client bundle built successfully');
 
-    // Step 5: Deploy workers
-    console.log('\n🚀 Step 5/5: Deploying workers...');
+    // Step 5: Apply database migrations
+    console.log('\n🗄️  Step 5/8: Applying database migrations to production...');
+    await runCommand('wrangler', ['d1', 'migrations', 'apply', 'test-webhook', '--remote'], { cwd: './admin' });
+    console.log('✅ Database migrations applied successfully');
+
+    // Step 6: Setup KV namespace
+    console.log('\n🔑 Step 6/8: Setting up KV namespace...');
+    await runCommand('node', ['scripts/setup-kv.js']);
+    console.log('✅ KV namespace configured');
+
+    // Step 7: Upload secrets
+    console.log('\n🔐 Step 7/8: Uploading secrets...');
+    await runCommand('node', ['scripts/upload-secrets.js']);
+    console.log('✅ Secrets uploaded successfully');
+
+    // Step 8: Deploy workers
+    console.log('\n🚀 Step 8/8: Deploying workers...');
 
     // Deploy admin worker
     console.log('\n   📡 Deploying admin worker...');
@@ -81,9 +96,9 @@ async function main() {
     console.log('');
     console.log('Next steps:');
     console.log('  1. Verify admin worker at your production domain');
-    console.log('  2. Test webhook ingestion endpoint');
-    console.log('  3. Check Cloudflare dashboard for worker logs');
-    console.log('  4. Ensure D1 database migrations are applied');
+    console.log('  2. Test authentication (Google OAuth + Email/Password)');
+    console.log('  3. Test webhook ingestion endpoint');
+    console.log('  4. Check Cloudflare dashboard for worker logs');
 
   } catch (error) {
     console.error('\n❌ Deployment failed:', error.message);

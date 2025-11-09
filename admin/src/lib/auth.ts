@@ -16,7 +16,7 @@ export function createAuth(env: Bindings) {
   const emailService = createEmailService(env.RESEND_API_KEY, env.FROM_EMAIL)
 
   const auth = betterAuth({
-    baseURL: 'http://localhost:5173',
+    baseURL: env.BASE_URL || 'http://localhost:5173',
     secret: env.BETTER_AUTH_SECRET,
 
     database: drizzleAdapter(db, {

@@ -606,3 +606,106 @@ async function fetchCollaborators(webhookId: string): Promise<Collaborator[]> {
     return []
   }
 }
+
+// Headers modal
+export function showHeadersModal(headers: string): void {
+  function HeadersModal() {
+    const [copied, setCopied] = React.useState(false)
+
+    const handleCopy = async () => {
+      await navigator.clipboard.writeText(headers)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+
+    const handleClose = () => {
+      cleanup()
+    }
+
+    return (
+      <ModalContainer maxWidth="max-w-3xl" onClose={handleClose}>
+        <ModalHeader title="Request Headers" onClose={handleClose} />
+        <div className="p-6">
+          <div className="mb-4">
+            <Button
+              onClick={handleCopy}
+              color={copied ? 'success' : 'secondary'}
+              style="ghost"
+              size="sm"
+              prefixIcon={copied ? IconCheck : IconCopy}
+            >
+              {copied ? 'Copied!' : 'Copy Headers'}
+            </Button>
+          </div>
+          <pre className="bg-background p-4 rounded border border-border overflow-x-auto max-h-[60vh] overflow-y-auto text-xs font-mono whitespace-pre-wrap break-all">
+            {headers}
+          </pre>
+          <div className="mt-6 flex justify-end">
+            <Button color="primary" onClick={handleClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </ModalContainer>
+    )
+  }
+
+  const { cleanup } = renderModal(<HeadersModal />)
+}
+
+// Payload modal
+export function showPayloadModal(payload: string): void {
+  function PayloadModal() {
+    const [copied, setCopied] = React.useState(false)
+
+    const handleCopy = async () => {
+      await navigator.clipboard.writeText(payload)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+
+    const handleClose = () => {
+      cleanup()
+    }
+
+    // Try to parse and pretty-print JSON
+    let displayContent = payload
+    let isJson = false
+    try {
+      const parsed = JSON.parse(payload)
+      displayContent = JSON.stringify(parsed, null, 2)
+      isJson = true
+    } catch {
+      // Not JSON, use as-is
+    }
+
+    return (
+      <ModalContainer maxWidth="max-w-3xl" onClose={handleClose}>
+        <ModalHeader title={isJson ? 'Payload (JSON)' : 'Payload'} onClose={handleClose} />
+        <div className="p-6">
+          <div className="mb-4">
+            <Button
+              onClick={handleCopy}
+              color={copied ? 'success' : 'secondary'}
+              style="ghost"
+              size="sm"
+              prefixIcon={copied ? IconCheck : IconCopy}
+            >
+              {copied ? 'Copied!' : 'Copy Payload'}
+            </Button>
+          </div>
+          <pre className="bg-background p-4 rounded border border-border overflow-x-auto max-h-[60vh] overflow-y-auto text-xs font-mono whitespace-pre-wrap break-all">
+            {displayContent}
+          </pre>
+          <div className="mt-6 flex justify-end">
+            <Button color="primary" onClick={handleClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </ModalContainer>
+    )
+  }
+
+  const { cleanup } = renderModal(<PayloadModal />)
+}

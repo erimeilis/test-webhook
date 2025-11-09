@@ -14,7 +14,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "webhook-db"
-database_id = "YOUR_D1_DATABASE_ID" # Replace after creating D1 database
+database_id = "4b560545-0e26-4d08-9058-b72cebe26514" # Replace after creating D1 database
 
 # Environment variables
 [vars]
