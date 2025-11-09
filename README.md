@@ -204,12 +204,8 @@ Thank you to all maintainers and contributors of these projects! 🙏
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-<div align="center">
-
-Made with 💙💛 using Hono, Rust and Cloudflare Workers
-
-</div>
+**Made with 💙💛 using Hono, Rust and Cloudflare Workers**
