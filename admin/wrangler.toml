@@ -45,3 +45,4 @@ vars = { ENVIRONMENT = "production" }
 # - FROM_EMAIL
 # - BETTER_AUTH_SECRET
 # - WEBHOOK_WORKER_URL (production webhook ingestion endpoint)
+# - ADMIN_EMAIL (email address of the admin user)

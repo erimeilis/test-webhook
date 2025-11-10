@@ -5,9 +5,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "npm run setup:admin && npm run setup:webhook",
+    "setup": "npm run setup:admin && npm run setup:webhook && npm run db:setup",
     "setup:admin": "cd admin && npm install",
     "setup:webhook": "cd webhook-worker && cargo build",
+    "db:setup": "node scripts/setup-database.js",
     "dev": "node scripts/dev-fullstack.js",
     "deploy": "node scripts/deploy-fullstack.js",
     "deploy:admin": "cd admin && npm run deploy",

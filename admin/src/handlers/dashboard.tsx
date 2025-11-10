@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/Button'
 import { WebhookCard } from '@/components/WebhookCard'
 import { Table, type TableColumn } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
+import { AdminPanel, type UserStats } from '@/components/AdminPanel'
+import { WebhookFilters } from '@/components/WebhookFilters'
 import { drizzle } from 'drizzle-orm/d1'
-import { webhooks, webhookData, webhookShares } from '@/lib/db-schema'
+import { webhooks, webhookData, webhookShares, user as userTable } from '@/lib/db-schema'
 import { eq, desc, or, and, asc, sql } from 'drizzle-orm'
 import type { WebhookData } from '@/types/webhooks'
 import { IconPlus, IconX } from '@tabler/icons-react'
@@ -182,6 +184,8 @@ function getGravatarUrl(email: string | undefined): string {
 // Dashboard page - protected route
 export async function handleDashboard(c: AppContext) {
   const user = c.get('user')
+  const isAdmin = c.get('isAdmin')
+  const isImpersonating = c.get('isImpersonating')
 
   if (!user) {
     return c.redirect('/login?error=unauthorized')
@@ -189,6 +193,9 @@ export async function handleDashboard(c: AppContext) {
 
   // Get webhook ID from URL params (optional)
   const webhookId = c.req.param('id')
+
+  // Get active tag filter from query params (optional)
+  const activeTag = c.req.query('tag')
 
   // Fetch webhooks for the user
   const db = drizzle(c.env.DB)
@@ -198,6 +205,69 @@ export async function handleDashboard(c: AppContext) {
     .where(eq(webhooks.userId, user.id))
     .orderBy(webhooks.createdAt)
     .all()
+
+  // Fetch all users with stats for admin
+  let allUsersStats: UserStats[] = []
+  if (isAdmin) {
+    try {
+      // Get all users
+      const allUsers = await db
+        .select({
+          id: userTable.id,
+          email: userTable.email,
+          name: userTable.name,
+          role: userTable.role,
+          emailVerified: userTable.emailVerified,
+          createdAt: userTable.createdAt,
+        })
+        .from(userTable)
+        .orderBy(desc(userTable.createdAt))
+        .all()
+
+      // Get webhook counts for each user
+      const webhookCounts = await db
+        .select({
+          userId: webhooks.userId,
+          count: sql<number>`count(*)`.as('count'),
+        })
+        .from(webhooks)
+        .groupBy(webhooks.userId)
+        .all()
+
+      // Get request counts and total bytes for each user
+      const requestStats = await db
+        .select({
+          userId: webhooks.userId,
+          requestCount: sql<number>`count(${webhookData.id})`.as('requestCount'),
+          totalBytes: sql<number>`sum(${webhookData.sizeBytes})`.as('totalBytes'),
+        })
+        .from(webhooks)
+        .leftJoin(webhookData, eq(webhooks.id, webhookData.webhookId))
+        .groupBy(webhooks.userId)
+        .all()
+
+      // Combine all stats
+      allUsersStats = allUsers.map(u => {
+        const webhookCount = webhookCounts.find(wc => wc.userId === u.id)?.count || 0
+        const stats = requestStats.find(rs => rs.userId === u.id)
+
+        return {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          emailVerified: u.emailVerified,
+          createdAt: u.createdAt,
+          webhookCount,
+          requestCount: stats?.requestCount || 0,
+          totalBytes: stats?.totalBytes || 0,
+        }
+      })
+    } catch (error) {
+      console.error('❌ Error fetching admin stats:', error)
+      // Continue rendering without admin panel
+    }
+  }
 
   // Fetch shared webhooks for this user
   const sharedWebhooks = await db
@@ -507,14 +577,24 @@ export async function handleDashboard(c: AppContext) {
                 <h1 className="text-lg min-[768px]:text-xl font-bold whitespace-nowrap">Webhooks</h1>
             </div>
 
-            {/* Desktop: Email + Sign Out */}
+            {/* Desktop: Email + Sign Out / Return to Admin */}
             <div className="hidden min-[768px]:flex items-center gap-3">
                 <div className="flex items-center gap-2">
                     <img src={gravatarUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
-                    <span className="text-sm text-muted-foreground">{user.email}</span>
+                    <div className="flex flex-col">
+                      {isImpersonating && (
+                        <span className="text-xs text-amber-400 font-medium">Impersonating</span>
+                      )}
+                      <span className="text-sm text-muted-foreground">{user.email}</span>
+                    </div>
                 </div>
-                <Button color="secondary" style="outline" size="sm" data-action="sign-out">
-                  Sign Out
+                <Button
+                  color="secondary"
+                  style="outline"
+                  size="sm"
+                  data-action={isImpersonating ? "stop-impersonation" : "sign-out"}
+                >
+                  {isImpersonating ? "Return to Admin" : "Sign Out"}
                 </Button>
             </div>
 
@@ -532,10 +612,21 @@ export async function handleDashboard(c: AppContext) {
                 <div className="hidden absolute right-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg p-3" data-user-menu>
                     <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
                         <img src={gravatarUrl} alt="Avatar" className="w-10 h-10 rounded-full" />
-                        <span className="text-sm text-muted-foreground truncate flex-1">{user.email}</span>
+                        <div className="flex flex-col flex-1 min-w-0">
+                          {isImpersonating && (
+                            <span className="text-xs text-amber-400 font-medium">Impersonating</span>
+                          )}
+                          <span className="text-sm text-muted-foreground truncate">{user.email}</span>
+                        </div>
                     </div>
-                    <Button color="secondary" style="outline" size="sm" data-action="sign-out" className="w-full">
-                      Sign Out
+                    <Button
+                      color="secondary"
+                      style="outline"
+                      size="sm"
+                      data-action={isImpersonating ? "stop-impersonation" : "sign-out"}
+                      className="w-full"
+                    >
+                      {isImpersonating ? "Return to Admin" : "Sign Out"}
                     </Button>
                 </div>
             </div>
@@ -546,6 +637,14 @@ export async function handleDashboard(c: AppContext) {
       {/* Main Content - Slot-based Layout */}
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div id="dashboard-main-grid" className="grid gap-6 w-full overflow-x-hidden">
+          {/* Admin Panel Section (admin only) */}
+          {isAdmin && allUsersStats.length > 0 && (
+            <AdminPanel users={allUsersStats} />
+          )}
+
+          {/* Filter Panel */}
+          <WebhookFilters activeTag={activeTag} />
+
           {/* Shared Webhooks Section */}
           {sharedWebhooks.length > 0 && (
             <div className="bg-card border border-warning rounded-lg">

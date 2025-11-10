@@ -107,6 +107,12 @@ Before first deployment, set up Cloudflare resources:
    wrangler secret put RESEND_API_KEY
    wrangler secret put BETTER_AUTH_SECRET
    wrangler secret put FROM_EMAIL
+   wrangler secret put ADMIN_EMAIL
+   ```
+
+   Alternatively, use automated secrets upload from `.env`:
+   ```bash
+   npm run secrets:upload
    ```
 
 ### Additional Commands
@@ -161,6 +167,8 @@ npm run db:migrate   # Reapply migrations
 - ✅ Code examples (curl, JS, PHP, Python, Node.js)
 - ✅ Data retention (1 month or 10MB per user)
 - ✅ Scheduled cleanup jobs
+- ✅ Admin panel with user statistics
+- ✅ Admin impersonation for support and troubleshooting
 
 ## Project Structure
 

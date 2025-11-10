@@ -34,7 +34,7 @@ npm run deploy
 3. ✅ CSS build (`npm run build:css`)
 4. ✅ Client bundle build (`npm run build:client`)
 5. 🗄️  KV namespace setup (`npm run kv:setup`)
-6. 🔐 Secret upload from `.dev.vars` (`npm run secrets:upload`)
+6. 🔐 Secret upload from `.env` (`npm run secrets:upload`)
 7. 🚀 Deploy admin worker
 8. 🚀 Deploy webhook worker
 
@@ -77,7 +77,7 @@ npm run kv:setup
 
 ### `upload-secrets.js`
 
-**Purpose**: Upload secrets from `admin/.dev.vars` to Cloudflare Workers.
+**Purpose**: Upload secrets from `admin/.env` to Cloudflare Workers.
 
 **Usage**:
 ```bash
@@ -85,13 +85,13 @@ npm run secrets:upload
 ```
 
 **Features**:
-- Reads secrets from `admin/.dev.vars`
+- Reads secrets from `admin/.env` (production) or `admin/.env.local` (development)
 - Parses environment variables in `KEY=VALUE` format
 - Uploads each secret using `wrangler secret put`
 - Skips comments and empty lines
 - Provides detailed progress feedback
 
-**`.dev.vars` File Format**:
+**`.env` File Format**:
 ```env
 # Comments start with #
 BASE_URL=https://your-worker.your-subdomain.workers.dev
@@ -103,14 +103,14 @@ BETTER_AUTH_SECRET=your-secret
 ```
 
 **Error Handling**:
-- Checks if `.dev.vars` exists before processing
+- Checks if `.env` or `.env.local` exists before processing
 - Validates correct directory execution
 - Provides clear error messages for failures
 
 **Security Notes**:
-- `.dev.vars` is gitignored and should never be committed
+- `.env` and `.env.local` are gitignored and should never be committed
 - Secrets are uploaded to Cloudflare's secure secret storage
-- Use different `.dev.vars` for production vs development
+- Use `.env` for production and `.env.local` for development
 
 ## Script Development
 
@@ -171,7 +171,7 @@ lsof -ti:5174 | xargs kill -9
 ### Secret Upload Failures
 
 If `npm run secrets:upload` fails:
-1. Verify `.dev.vars` exists in `admin/` directory
+1. Verify `.env` or `.env.local` exists in `admin/` directory
 2. Check that all secrets are in `KEY=VALUE` format
 3. Ensure you're logged in to Cloudflare: `wrangler login`
 4. Verify you have write permissions for the worker

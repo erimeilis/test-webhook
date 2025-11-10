@@ -7,7 +7,7 @@ import { createMiddleware } from 'hono/factory'
 import type { Bindings, Variables } from '@/types/hono'
 import { createAuth } from '@/lib/auth'
 import { drizzle } from 'drizzle-orm/d1'
-import { webhooks } from '@/lib/db-schema'
+import { webhooks, user as userTable } from '@/lib/db-schema'
 import { eq } from 'drizzle-orm'
 
 export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: Variables }>(
@@ -24,16 +24,44 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: 
         return c.redirect('/login?error=unauthorized')
       }
 
-      // Set user in context
+      const db = drizzle(c.env.DB)
+
+      // Check if user is admin and update role if needed
+      const adminEmail = c.env.ADMIN_EMAIL?.toLowerCase()
+      const userEmail = session.user.email.toLowerCase()
+      const isAdmin = adminEmail === userEmail
+
+      // If user is admin but doesn't have admin role, update it
+      if (isAdmin && session.user.role !== 'admin') {
+        try {
+          await db.update(userTable)
+            .set({ role: 'admin' })
+            .where(eq(userTable.id, session.user.id))
+          console.log('✅ Updated user role to admin:', userEmail)
+        } catch (error) {
+          console.error('❌ Failed to update user role:', error)
+        }
+      }
+
+      // Check if this session is an impersonation
+      const isImpersonating = !!(session.session as { impersonatedBy?: string }).impersonatedBy
+
+      // Set user in context with role
       c.set('user', {
         id: session.user.id,
         email: session.user.email,
         name: session.user.name,
+        role: isAdmin ? 'admin' : session.user.role || 'user',
       })
+
+      // Set isAdmin flag
+      c.set('isAdmin', isAdmin)
+
+      // Set impersonation flag
+      c.set('isImpersonating', isImpersonating)
 
       // Auto-create default webhook for new users
       try {
-        const db = drizzle(c.env.DB)
         const userWebhooks = await db
           .select()
           .from(webhooks)

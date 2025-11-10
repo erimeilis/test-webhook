@@ -2,7 +2,7 @@
 
 /**
  * Upload Secrets Script
- * Reads secrets from .dev.vars and uploads them to Cloudflare using wrangler
+ * Reads secrets from .env (production) or .env.local and uploads them to Cloudflare using wrangler
  *
  * Usage: node scripts/upload-secrets.js
  */
@@ -80,8 +80,8 @@ async function uploadSecret(name, value, cwd) {
   }
 }
 
-// Parse .dev.vars file
-function parseDevVars(filePath) {
+// Parse .env file
+function parseEnvFile(filePath) {
   const content = readFileSync(filePath, 'utf8');
   const secrets = {};
 
@@ -109,34 +109,34 @@ async function main() {
   console.log('═'.repeat(60));
 
   const adminDir = './admin';
-  const devVarsPath = join(adminDir, '.dev.vars');
-  const prodVarsPath = join(adminDir, '.dev.vars.production');
+  const prodEnvPath = join(adminDir, '.env');
+  const localEnvPath = join(adminDir, '.env.local');
 
   // Determine which file to use
   let secretsPath;
   let environment;
 
-  if (existsSync(prodVarsPath)) {
-    secretsPath = prodVarsPath;
+  if (existsSync(prodEnvPath)) {
+    secretsPath = prodEnvPath;
     environment = 'production';
-    console.log('\n✅ Found .dev.vars.production - using PRODUCTION secrets');
-  } else if (existsSync(devVarsPath)) {
-    secretsPath = devVarsPath;
+    console.log('\n✅ Found .env - using PRODUCTION secrets');
+  } else if (existsSync(localEnvPath)) {
+    secretsPath = localEnvPath;
     environment = 'development';
-    console.log('\n⚠️  Using .dev.vars (development secrets)');
-    console.log('   💡 For production, create .dev.vars.production with production BASE_URL');
+    console.log('\n⚠️  Using .env.local (development secrets)');
+    console.log('   💡 For production, create .env with production BASE_URL');
   } else {
     console.error('❌ No secrets file found!');
     console.error('   Expected either:');
-    console.error('   - .dev.vars.production (recommended for deployment)');
-    console.error('   - .dev.vars (fallback)');
+    console.error('   - .env (recommended for deployment)');
+    console.error('   - .env.local (fallback)');
     process.exit(1);
   }
 
   try {
     // Parse secrets from chosen file
     console.log(`\n📖 Reading secrets from ${secretsPath.split('/').pop()}...`);
-    const secrets = parseDevVars(secretsPath);
+    const secrets = parseEnvFile(secretsPath);
 
     const secretKeys = Object.keys(secrets);
     if (secretKeys.length === 0) {
@@ -150,7 +150,7 @@ async function main() {
     if (secrets.BASE_URL && secrets.BASE_URL.includes('localhost')) {
       console.log('\n⚠️  WARNING: BASE_URL contains localhost!');
       console.log('   This will break OAuth in production.');
-      console.log('   💡 Create .dev.vars.production with production BASE_URL');
+      console.log('   💡 Create .env with production BASE_URL');
     } else if (secrets.BASE_URL) {
       console.log(`\n✅ BASE_URL: ${secrets.BASE_URL}`);
     }
@@ -166,7 +166,7 @@ async function main() {
 
   } catch (error) {
     console.error('\n❌ Secret upload failed:', error.message);
-    console.error('\nPlease check your .dev.vars file and try again.');
+    console.error('\nPlease check your .env file and try again.');
     process.exit(1);
   }
 }

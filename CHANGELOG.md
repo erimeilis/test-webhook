@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.3.0] - 2025-11-10
+
+### Added ✨
+- Integrated impersonation indicator into header (next to user gravatar and email)
+- Dynamic header button: "Sign Out" becomes "Return to Admin" when impersonating
+- Visual "Impersonating" label in amber color above user email
+- Mobile-responsive impersonation UI in dropdown menu
+- **Mobile-optimized admin panel** with card-based user list
+- 2x2 stats grid layout for compact mobile display (Webhooks, Requests, Storage, Verified)
+- Full-width impersonate button on mobile matching webhook card design
+
+### Changed 🔄
+- Removed separate impersonation banner component
+- Simplified and compacted impersonation UX
+- Improved header layout with better visual hierarchy
+- **Renamed environment files** to standard convention:
+  - `.dev.vars` → `.env.local` (local development)
+  - `.dev.vars.production` → `.env` (production)
+  - `.dev.vars.example` → `.env.example` (template)
+- Updated all scripts and documentation references
+- Center-aligned admin table columns (Role, Verified, Webhooks, Requests, Storage, Joined, Actions)
+- Dual-view admin panel: table for desktop, cards for mobile
+
+### Fixed 🐛
+- Fixed stop-impersonation endpoint 500 error (missing JSON body)
+- Fixed client-side stop-impersonation handler
+- Fixed table header alignment to respect column className settings
+
+---
+
+## [0.2.0] - 2025-11-10
+
+### Added ✨
+- **Admin impersonation system** using Better Auth admin plugin
+- Admin panel showing all users with statistics (webhooks, data count, storage used)
+- Impersonate user functionality with session tracking
+- Stop impersonation to return to admin session
+- Database migration for `impersonated_by` field in session table
+- Automatic migration application on initial setup (`npm run setup`)
+- Database setup script for new repository users
+
+### Changed 🔄
+- Authentication middleware now detects impersonation state via `session.impersonatedBy`
+- Added `isImpersonating` flag to Hono Variables type
+- Admin role detection and auto-update based on `ADMIN_EMAIL` environment variable
+
+### Technical 🔧
+- Created `/scripts/setup-database.js` for automated migration application
+- Updated deployment script to apply migrations to production
+- Better Auth CLI integration for schema generation
+- Modal system for impersonation confirmation dialogs
+
+---
+
 ## [0.1.0] - 2025-11-09
 
 ### What Works ✅

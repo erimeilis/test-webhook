@@ -8,10 +8,14 @@ import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 // Better Auth: Users table
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
-  name: text('name').notNull(),
+  name: text('name'),
   email: text('email').notNull().unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   image: text('image'),
+  role: text('role').default('user'), // 'admin' or 'user'
+  banned: integer('banned', { mode: 'boolean' }).default(false), // Admin plugin requirement
+  banReason: text('ban_reason'), // Admin plugin requirement
+  banExpires: integer('ban_expires', { mode: 'timestamp' }), // Admin plugin requirement
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 }, (table) => ({
@@ -28,6 +32,7 @@ export const session = sqliteTable('session', {
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  impersonatedBy: text('impersonated_by'), // Admin plugin: ID of admin user doing impersonation
 }, (table) => ({
   tokenIdx: index('session_token_idx').on(table.token),
   userIdIdx: index('session_user_id_idx').on(table.userId),

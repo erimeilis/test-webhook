@@ -5,3 +5,4 @@
 
 import './routing'
 import './auth'
+import './admin'

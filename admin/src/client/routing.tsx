@@ -92,6 +92,13 @@ function init() {
   setupEventListeners()
   initializeTables()
 
+  // Apply tag filter if present in URL on page load
+  const urlParams = new URLSearchParams(window.location.search)
+  const tag = urlParams.get('tag')
+  if (tag) {
+    applyTagFilter(tag)
+  }
+
   // Browser back/forward will trigger full page reload automatically
 }
 
@@ -500,18 +507,12 @@ function handleCopyWebhookUrl(button: HTMLElement, webhookId: string) {
   })
 }
 
-function getTagColor(tag: string): string {
-  const TAG_COLORS = ['default', 'success', 'warning', 'error', 'secondary']
-  let hash = 0
-  for (let i = 0; i < tag.length; i++) {
-    hash = ((hash << 5) - hash) + tag.charCodeAt(i)
-    hash = hash & hash
-  }
-  const index = Math.abs(hash) % TAG_COLORS.length
-  return TAG_COLORS[index] || 'default'
+function handleFilterByTag(tag: string) {
+  // Navigate with full page reload to show server-rendered filter component
+  window.location.href = `/dashboard?tag=${encodeURIComponent(tag)}`
 }
 
-function handleFilterByTag(tag: string) {
+function applyTagFilter(tag: string) {
   const webhookCards = Array.from(document.querySelectorAll('[data-webhook-id]')) as HTMLElement[]
 
   webhookCards.forEach((card) => {
@@ -525,113 +526,6 @@ function handleFilterByTag(tag: string) {
       card.style.display = 'none'
     }
   })
-
-  // Show clear filter button
-  showClearFilterButton(tag)
-}
-
-function showClearFilterButton(activeTag: string) {
-  // Remove existing clear button if any
-  const existing = document.getElementById('clear-filter-btn')
-  if (existing) existing.remove()
-
-  const mainContainer = document.getElementById('dashboard-main-grid')
-  if (!mainContainer) return
-
-  const tagColor = getTagColor(activeTag)
-
-  // Create container
-  const clearBtn = document.createElement('div')
-  clearBtn.id = 'clear-filter-btn'
-  clearBtn.className = 'bg-background border border-border rounded-lg p-4 flex items-center justify-between'
-
-  // Create left side with icon and tag
-  const leftSide = document.createElement('span')
-  leftSide.className = 'text-sm flex items-center gap-2'
-
-  // Create filter icon SVG
-  const filterSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-  filterSvg.setAttribute('width', '16')
-  filterSvg.setAttribute('height', '16')
-  filterSvg.setAttribute('viewBox', '0 0 24 24')
-  filterSvg.setAttribute('fill', 'none')
-  filterSvg.setAttribute('stroke', 'currentColor')
-  filterSvg.setAttribute('stroke-width', '2')
-  filterSvg.setAttribute('stroke-linecap', 'round')
-  filterSvg.setAttribute('stroke-linejoin', 'round')
-  filterSvg.setAttribute('class', 'text-green-500')
-
-  const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  path1.setAttribute('d', 'M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2')
-  const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  path2.setAttribute('d', 'M8.5 2h7')
-  const path3 = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  path3.setAttribute('d', 'M7 16h10')
-
-  filterSvg.appendChild(path1)
-  filterSvg.appendChild(path2)
-  filterSvg.appendChild(path3)
-
-  leftSide.appendChild(filterSvg)
-  leftSide.appendChild(document.createTextNode('Filtering by tag:'))
-
-  // Create tag badge with proper color - matching Badge component exactly
-  const tagBadge = document.createElement('strong')
-  tagBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium'
-  tagBadge.textContent = activeTag
-
-  // Set color based on variant using inline styles - solid colors
-  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    'default': { bg: '#3b82f6', text: '#ffffff', border: '#3b82f6' },    // blue-500
-    'secondary': { bg: '#6b7280', text: '#ffffff', border: '#6b7280' },  // gray-500
-    'success': { bg: '#22c55e', text: '#ffffff', border: '#22c55e' },    // green-500
-    'warning': { bg: '#eab308', text: '#ffffff', border: '#eab308' },    // yellow-500
-    'error': { bg: '#ef4444', text: '#ffffff', border: '#ef4444' }       // red-500
-  }
-
-  const colors = colorMap[tagColor] || colorMap['default']!
-  tagBadge.style.backgroundColor = colors.bg
-  tagBadge.style.color = colors.text
-  tagBadge.style.border = `1px solid ${colors.border}`
-
-  leftSide.appendChild(tagBadge)
-
-  // Create close button
-  const closeBtn = document.createElement('button')
-  closeBtn.className = 'p-1 hover:bg-muted rounded transition-colors'
-  closeBtn.title = 'Clear filter'
-
-  // Create close icon SVG
-  const closeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-  closeSvg.setAttribute('width', '18')
-  closeSvg.setAttribute('height', '18')
-  closeSvg.setAttribute('viewBox', '0 0 24 24')
-  closeSvg.setAttribute('fill', 'none')
-  closeSvg.setAttribute('stroke', 'currentColor')
-  closeSvg.setAttribute('stroke-width', '2')
-  closeSvg.setAttribute('stroke-linecap', 'round')
-  closeSvg.setAttribute('stroke-linejoin', 'round')
-
-  const closePath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  closePath1.setAttribute('d', 'M18 6 6 18')
-  const closePath2 = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-  closePath2.setAttribute('d', 'm6 6 12 12')
-
-  closeSvg.appendChild(closePath1)
-  closeSvg.appendChild(closePath2)
-  closeBtn.appendChild(closeSvg)
-  closeBtn.onclick = () => {
-    clearBtn.remove()
-    document.querySelectorAll('[data-webhook-id]').forEach((el: Element) => {
-      const htmlEl = el as HTMLElement
-      htmlEl.style.display = ''
-      htmlEl.style.backgroundColor = ''
-    })
-  }
-
-  clearBtn.appendChild(leftSide)
-  clearBtn.appendChild(closeBtn)
-  mainContainer.insertBefore(clearBtn, mainContainer.firstChild)
 }
 
 function handleToggleMenu(webhookId: string) {

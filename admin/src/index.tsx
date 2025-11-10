@@ -17,10 +17,20 @@ import { handleTestTable } from '@/handlers/test-table'
 import { listWebhooks, createWebhook, updateWebhook, deleteWebhook, getWebhookData } from '@/handlers/webhooks'
 import { getCodeExamples } from '@/handlers/code-examples'
 import { shareWebhook, listCollaborators, removeCollaborator } from '@/handlers/webhook-sharing'
+import { listUsers, impersonateUser, stopImpersonation } from '@/handlers/admin'
 import { authMiddleware } from '@/middleware/auth'
 
 // Initialize Hono app
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+
+// Global error handler
+app.onError((err, c) => {
+  console.error('🚨 Global error handler caught:', err)
+  console.error('🚨 Error stack:', err.stack)
+  console.error('🚨 Request path:', c.req.path)
+  console.error('🚨 Request method:', c.req.method)
+  return c.json({ error: 'Internal server error', message: err.message }, 500)
+})
 
 // React renderer setup with dark theme
 app.use('*', reactRenderer(({ children }) => {
@@ -54,11 +64,24 @@ app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
     console.log('🔐 Calling Better Auth handler...')
     const response = await auth.handler(c.req.raw)
     console.log('🔐 Response status:', response.status)
+
+    // Log response details for debugging
+    const responseClone = response.clone()
+    const responseText = await responseClone.text()
+    console.log('🔐 Response body preview:', responseText.substring(0, 200))
+
     return response
   } catch (error) {
     console.error('🔐 Error in auth handler:', error)
-    throw error
+    console.error('🔐 Error stack:', error instanceof Error ? error.stack : 'No stack')
+    return c.json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' }, 500)
   }
+})
+
+// Test route to verify server is working
+app.post('/api/test-impersonate', async (c) => {
+  console.log('🧪 Test impersonate route called')
+  return c.json({ message: 'Test endpoint working' })
 })
 
 // Health check route
@@ -133,6 +156,11 @@ app.get('/api/webhooks/:id/examples', authMiddleware, getCodeExamples)
 app.post('/api/webhooks/:id/share', authMiddleware, shareWebhook)
 app.get('/api/webhooks/:id/collaborators', authMiddleware, listCollaborators)
 app.delete('/api/webhooks/:id/shares/:shareId', authMiddleware, removeCollaborator)
+
+// Admin API routes (admin-only)
+app.get('/api/admin/users', authMiddleware, listUsers)
+app.post('/api/admin/impersonate', authMiddleware, impersonateUser)
+app.post('/api/admin/stop-impersonation', authMiddleware, stopImpersonation)
 
 // Public routes
 app.get('/', async (c) => {

@@ -15,6 +15,7 @@ export type Bindings = {
   BETTER_AUTH_SECRET: string
   ENVIRONMENT: string
   WEBHOOK_WORKER_URL: string
+  ADMIN_EMAIL: string
 }
 
 export type Variables = {
@@ -22,7 +23,10 @@ export type Variables = {
     id: string
     email: string
     name?: string
+    role?: string
   }
+  isAdmin?: boolean
+  isImpersonating?: boolean
 }
 
 export type Env = {

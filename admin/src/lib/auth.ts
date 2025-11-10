@@ -6,6 +6,7 @@
 
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { admin } from 'better-auth/plugins'
 import { drizzle } from 'drizzle-orm/d1'
 import type { Bindings } from '@/types/hono'
 import * as schema from './db-schema'
@@ -97,6 +98,15 @@ export function createAuth(env: Bindings) {
         trustedProviders: ['google'],
       },
     },
+
+    // Plugins
+    plugins: [
+      admin({
+        impersonationSessionDuration: 60 * 60, // 1 hour
+        defaultRole: 'user',
+        adminRole: 'admin',
+      }),
+    ],
 
     // Database hooks to auto-create password credentials for OAuth users
     databaseHooks: {

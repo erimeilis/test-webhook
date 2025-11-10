@@ -13,6 +13,10 @@ export const user = sqliteTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   image: text('image'),
+  role: text('role').default('user'), // 'admin' or 'user'
+  banned: integer('banned', { mode: 'boolean' }).default(false), // Admin plugin requirement
+  banReason: text('ban_reason'), // Admin plugin requirement
+  banExpires: integer('ban_expires', { mode: 'timestamp' }), // Admin plugin requirement
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 }, (table: ReturnType<typeof sqliteTable>) => ({
@@ -29,6 +33,7 @@ export const session = sqliteTable('session', {
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  impersonatedBy: text('impersonated_by'), // Admin plugin: ID of admin user doing impersonation
 }, (table: ReturnType<typeof sqliteTable>) => ({
   tokenIdx: index('session_token_idx').on(table.token),
   userIdIdx: index('session_user_id_idx').on(table.userId),

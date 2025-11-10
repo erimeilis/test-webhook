@@ -110,14 +110,14 @@ Copy the output (e.g., `xK9f2Lm4pQw7RtY3nV8sH1jD6cB5aE0z...`)
 
 ### 3.2 Create Local Environment File
 
-Create a `.dev.vars` file in the `admin/` directory:
+Create a `.env.local` file in the `admin/` directory:
 
 ```bash
 cd admin
-touch .dev.vars
+touch .env.local
 ```
 
-Add your secrets to `.dev.vars`:
+Add your secrets to `.env.local`:
 
 ```env
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
@@ -126,7 +126,7 @@ RESEND_API_KEY=re_your_resend_api_key
 BETTER_AUTH_SECRET=your-generated-secret-from-openssl
 ```
 
-**Important**: `.dev.vars` is gitignored automatically by Wrangler.
+**Important**: `.env.local` is gitignored automatically.
 
 ### 3.3 Set Production Secrets (When Deploying)
 
@@ -220,7 +220,7 @@ After logging in:
 - **Solution**: Add your email as a test user in OAuth consent screen
 
 **Error: "Invalid client"**
-- **Solution**: Check `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.dev.vars`
+- **Solution**: Check `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env.local`
 
 ### Email Verification Issues
 
@@ -230,7 +230,7 @@ After logging in:
 - Look for lines containing email verification link
 
 **Resend API error: "API key invalid"**
-- **Solution**: Verify `RESEND_API_KEY` in `.dev.vars` starts with `re_`
+- **Solution**: Verify `RESEND_API_KEY` in `.env.local` starts with `re_`
 - Generate new API key in Resend dashboard if needed
 
 **Error: "Domain not verified"**
@@ -273,7 +273,7 @@ admin/
 │   └── types/
 │       └── hono.ts         # TypeScript types
 ├── dist/                   # Built assets (CSS, JS)
-├── .dev.vars               # Local secrets (gitignored)
+├── .env.local              # Local secrets (gitignored)
 ├── wrangler.toml           # Cloudflare Workers config
 ├── package.json            # Dependencies
 └── README.md               # This file
@@ -303,7 +303,7 @@ npm run lint:fix           # ESLint auto-fix
 
 ## Security Notes
 
-1. **Never commit `.dev.vars`** - It's gitignored by default
+1. **Never commit `.env.local` or `.env`** - They're gitignored by default
 2. **Rotate secrets regularly** - Especially if exposed
 3. **Use different secrets** for development vs production
 4. **Enable 2FA** on Google Cloud Console and Resend accounts

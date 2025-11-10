@@ -100,14 +100,18 @@ export function Table<T extends Record<string, unknown>>({
               {columns.map((column) => (
                 <Th
                   key={column.key}
-                  className={`text-left px-4 py-3 text-sm font-semibold ${
+                  className={`px-4 py-3 text-sm font-semibold ${
                     column.sortable ? 'cursor-pointer hover:bg-muted/70 select-none' : ''
-                  } ${column.className || ''}`}
+                  } ${column.className || 'text-left'}`}
                   style={column.width ? { width: column.width } : undefined}
                   data-sortable={column.sortable ? 'true' : undefined}
                   data-sort-key={column.key}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 ${
+                    column.className?.includes('text-center') ? 'justify-center' :
+                    column.className?.includes('text-right') ? 'justify-end' :
+                    'justify-start'
+                  }`}>
                     <span>{column.label}</span>
                     {column.sortable && (
                       <span className="text-muted-foreground flex-shrink-0" data-sort-icon={column.key}>
