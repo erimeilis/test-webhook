@@ -3,26 +3,30 @@
  * Reusable pagination controls with consistent styling
  */
 
+import { Button } from './Button'
+
 interface PaginationProps {
   currentPage: number
   totalPages: number
-  onPageChange: (page: number) => void
+  onPageChange?: (page: number) => void
   showInfo?: boolean
   startIndex?: number
   endIndex?: number
   totalItems?: number
   className?: string
+  tableId?: string
 }
 
 export function Pagination({
   currentPage,
   totalPages,
-  onPageChange,
+  onPageChange: _onPageChange,
   showInfo = true,
   startIndex = 0,
   endIndex = 0,
   totalItems = 0,
   className = '',
+  tableId = 'table',
 }: PaginationProps) {
   const generatePageNumbers = () => {
     const pages: (number | string)[] = []
@@ -67,22 +71,25 @@ export function Pagination({
   return (
     <div className={`flex items-center justify-between ${className}`}>
       {showInfo && (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground mr-2">
           Showing <span className="font-medium">{startIndex}</span>-
           <span className="font-medium">{endIndex}</span> of{' '}
-          <span className="font-medium">{totalItems}</span>
+          <span className="font-medium">{totalItems}</span>&nbsp;
         </div>
       )}
 
       <div className="flex items-center gap-2">
         {/* Previous Button */}
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
+        <Button
+          data-pagination-prev={tableId}
           disabled={currentPage <= 1}
-          className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          style="ghost"
+          size="xs"
+          className="w-7 h-7 flex items-center justify-center flex-shrink-0"
+          title="Previous page"
         >
-          Previous
-        </button>
+          ‹
+        </Button>
 
         {/* Page Numbers */}
         <div className="flex gap-1">
@@ -102,29 +109,31 @@ export function Pagination({
             const isActive = pageNum === currentPage
 
             return (
-              <button
+              <Button
                 key={pageNum}
-                onClick={() => onPageChange(pageNum)}
-                className={`px-3 py-1.5 text-sm border rounded transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border hover:bg-muted'
-                }`}
+                data-pagination-page={pageNum}
+                disabled={isActive}
+                style={isActive ? 'soft' : 'ghost'}
+                size="xs"
+                className="w-7 h-7 flex items-center justify-center flex-shrink-0"
               >
                 {pageNum}
-              </button>
+              </Button>
             )
           })}
         </div>
 
         {/* Next Button */}
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
+        <Button
+          data-pagination-next={tableId}
           disabled={currentPage >= totalPages}
-          className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          style="ghost"
+          size="xs"
+          className="w-7 h-7 flex items-center justify-center flex-shrink-0"
+          title="Next page"
         >
-          Next
-        </button>
+          ›
+        </Button>
       </div>
     </div>
   )

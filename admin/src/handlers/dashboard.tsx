@@ -11,7 +11,7 @@ import { Table, type TableColumn } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
 import { drizzle } from 'drizzle-orm/d1'
 import { webhooks, webhookData, webhookShares } from '@/lib/db-schema'
-import { eq, desc, or } from 'drizzle-orm'
+import { eq, desc, or, and, asc, sql } from 'drizzle-orm'
 import type { WebhookData } from '@/types/webhooks'
 import { IconPlus, IconX } from '@tabler/icons-react'
 
@@ -223,6 +223,9 @@ export async function handleDashboard(c: AppContext) {
   // Fetch requests if viewing specific webhook
   let selectedWebhook = null
   let requests: WebhookData[] = []
+  let page = 1
+  let pageSize = 10
+  let totalRecords = 0
 
   if (webhookId) {
     // Verify webhook belongs to user OR is shared with them
@@ -246,15 +249,71 @@ export async function handleDashboard(c: AppContext) {
 
     if (selectedWebhook) {
       try {
+        // Read query parameters for filtering, sorting, pagination
+        const searchParams = new URL(c.req.url).searchParams
+        page = Number(searchParams.get('requests_table_page') || '1')
+        pageSize = Number(searchParams.get('requests_table_size') || '10')
+        const sortColumn = searchParams.get('requests_table_sort') || 'received_at'
+        const sortDirection = searchParams.get('requests_table_dir') || 'desc'
+        const searchQuery = searchParams.get('requests_table_search') || ''
+        const methodFilter = searchParams.get('requests_table_method') || null
+        const dateStart = searchParams.get('requests_table_date_start') || null
+        const dateEnd = searchParams.get('requests_table_date_end') || null
+
+        console.log('🔍 Query params:', { page, pageSize, sortColumn, sortDirection, searchQuery, methodFilter, dateStart, dateEnd })
+
+        // Build WHERE conditions
+        const conditions = [eq(webhookData.webhookId, webhookId)]
+
+        // Method filter
+        if (methodFilter) {
+          conditions.push(eq(webhookData.method, methodFilter))
+        }
+
+        // Date range filter
+        if (dateStart && dateEnd) {
+          const startTimestamp = Math.floor(new Date(dateStart).getTime() / 1000)
+          const endTimestamp = Math.floor(new Date(dateEnd).getTime() / 1000) + (24 * 60 * 60)
+          conditions.push(
+            sql`${webhookData.receivedAt} >= ${startTimestamp} AND ${webhookData.receivedAt} < ${endTimestamp}`
+          )
+        }
+
+        // Search filter (search in data and headers)
+        if (searchQuery) {
+          conditions.push(
+            sql`(${webhookData.data} LIKE ${'%' + searchQuery + '%'} OR ${webhookData.headers} LIKE ${'%' + searchQuery + '%'})`
+          )
+        }
+
+        // Sorting
+        const orderByColumn = sortColumn === 'received_at' ? webhookData.receivedAt :
+                             sortColumn === 'method' ? webhookData.method :
+                             sortColumn === 'size_bytes' ? webhookData.sizeBytes :
+                             webhookData.receivedAt
+        const orderByDirection = sortDirection === 'asc' ? asc : desc
+
+        // Pagination
+        const offset = (page - 1) * pageSize
+
         const dbRequests = await db
           .select()
           .from(webhookData)
-          .where(eq(webhookData.webhookId, webhookId))
-          .orderBy(desc(webhookData.receivedAt))
-          .limit(100)
+          .where(and(...conditions))
+          .orderBy(orderByDirection(orderByColumn))
+          .limit(pageSize)
+          .offset(offset)
           .all()
 
-        console.log('📊 Fetched requests:', dbRequests.length, 'Sample:', dbRequests[0])
+        // Get total count for pagination (with same filters)
+        const countResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(webhookData)
+          .where(and(...conditions))
+          .get()
+
+        totalRecords = countResult?.count || 0
+        console.log('📊 Fetched requests:', dbRequests.length, 'of', totalRecords, 'total')
 
         // Transform DB records to match WebhookData interface
         requests = dbRequests.map(req => {
@@ -294,17 +353,15 @@ export async function handleDashboard(c: AppContext) {
   const webhookWorkerUrl = c.env.WEBHOOK_WORKER_URL || 'http://localhost:5174'
 
   // Table columns configuration
-  // Order: Datetime, Headers, Payload, Method, Size
+  // Order: Headers+Datetime (combined), Payload, Method, Size
   const requestsColumns: TableColumn<WebhookData>[] = [
     {
       key: 'received_at',
       label: 'Datetime',
       sortable: true,
-      className: 'whitespace-nowrap',
+      className: 'whitespace-nowrap max-md:hidden',
       render: (value) => {
         const date = new Date((value as number) * 1000)
-
-        // Format date parts
         const monthShort = date.toLocaleDateString('en-US', { month: 'short' })
         const day = date.getDate()
         const year = date.getFullYear()
@@ -316,7 +373,7 @@ export async function handleDashboard(c: AppContext) {
         })
 
         return (
-          <div className="text-xs leading-tight whitespace-nowrap">
+          <div className="text-xs leading-tight">
             <div className="font-medium">{monthShort} {day}, {year}</div>
             <div className="text-muted-foreground">{weekday}, {time}</div>
           </div>
@@ -326,20 +383,38 @@ export async function handleDashboard(c: AppContext) {
     {
       key: 'headers',
       label: 'Headers',
-      className: 'whitespace-nowrap',
-      render: (value) => {
+      render: (value, row) => {
+        // Parse headers
+        let headerCount = 0
+        let displayText = '-'
         try {
           const headers = JSON.parse(String(value))
-          const headerCount = Object.keys(headers).length
+          headerCount = Object.keys(headers).length
           const preview = Object.entries(headers)
             .slice(0, 2)
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ')
-          const displayText = preview.length > 40 ? preview.substring(0, 40) + '...' : preview
+          displayText = preview.length > 40 ? preview.substring(0, 40) + '...' : preview
+        } catch {
+          // Invalid JSON
+        }
 
-          return (
+        // Format datetime for mobile
+        const date = new Date((row.received_at as number) * 1000)
+        const monthShort = date.toLocaleDateString('en-US', { month: 'short' })
+        const day = date.getDate()
+        const year = date.getFullYear()
+        const time = date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        })
+
+        return (
+          <div className="text-xs">
+            {/* Desktop: Headers only */}
             <div
-              className="text-xs font-mono cursor-pointer hover:text-primary transition-colors"
+              className="max-md:hidden font-mono cursor-pointer hover:text-primary transition-colors"
               data-headers={String(value)}
               title="Click to view all headers"
             >
@@ -348,10 +423,27 @@ export async function handleDashboard(c: AppContext) {
               </div>
               <div className="text-foreground truncate max-w-48">{displayText}</div>
             </div>
-          )
-        } catch {
-          return <span className="text-xs text-muted-foreground">-</span>
-        }
+            {/* Mobile: Headers and Datetime on same row, preview below */}
+            <div className="md:hidden">
+              <div className="flex justify-between items-start gap-4 mb-1">
+                <div
+                  className="text-muted-foreground font-mono cursor-pointer hover:text-primary transition-colors"
+                  data-headers={String(value)}
+                  title="Click to view all headers"
+                >
+                  {headerCount} header{headerCount !== 1 ? 's' : ''}
+                </div>
+                <div className="whitespace-nowrap text-right flex-shrink-0">
+                  <span className="font-medium">{monthShort} {day}, {year}</span>
+                  <span className="text-muted-foreground"> · {time}</span>
+                </div>
+              </div>
+              <div className="text-foreground font-mono truncate">
+                {displayText}
+              </div>
+            </div>
+          </div>
+        )
       }
     },
     {
@@ -571,8 +663,88 @@ export async function handleDashboard(c: AppContext) {
                   searchable={true}
                   searchPlaceholder="Search requests by method, data, or timestamp..."
                   emptyMessage="No requests received yet. Send a request to this webhook to see it appear here."
-                  tableId="requests-table"
-                  defaultPageSize={10}
+                  tableId="requests_table"
+                  currentPage={page}
+                  defaultPageSize={pageSize}
+                  totalRecords={totalRecords}
+                  filters={
+                    <>
+                      {/* Date Range Filter */}
+                      <div className="relative">
+                        <button
+                          data-filter-toggle="date-range"
+                          className="px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-2"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                          </svg>
+                          <span data-filter-label="date-range">All dates</span>
+                        </button>
+                        <div
+                          data-filter-dropdown="date-range"
+                          className="hidden absolute top-full mt-2 z-10 bg-card border border-border rounded-lg shadow-lg min-w-[280px]"
+                        >
+                          <div className="p-3 space-y-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground mb-1 block">Start Date</label>
+                              <input
+                                type="date"
+                                data-filter-date-start
+                                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground mb-1 block">End Date</label>
+                              <input
+                                type="date"
+                                data-filter-date-end
+                                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="border-t border-border p-2 flex gap-2">
+                            <button
+                              data-filter-clear="date-range"
+                              className="flex-1 px-3 py-1.5 text-sm bg-background hover:bg-muted rounded transition-colors"
+                            >
+                              Clear
+                            </button>
+                            <button
+                              data-filter-apply="date-range"
+                              className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:opacity-90 rounded transition-colors"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Method Filter */}
+                      <div className="flex gap-1 border border-border rounded-lg p-1">
+                        <button
+                          data-filter-method="all"
+                          className="px-3 py-1 text-sm rounded bg-primary text-primary-foreground transition-colors"
+                        >
+                          All
+                        </button>
+                        <button
+                          data-filter-method="GET"
+                          className="px-3 py-1 text-sm rounded hover:bg-muted transition-colors"
+                        >
+                          GET
+                        </button>
+                        <button
+                          data-filter-method="POST"
+                          className="px-3 py-1 text-sm rounded hover:bg-muted transition-colors"
+                        >
+                          POST
+                        </button>
+                      </div>
+                    </>
+                  }
                 />
               </div>
             </div>

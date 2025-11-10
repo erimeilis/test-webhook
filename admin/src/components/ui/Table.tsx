@@ -6,7 +6,7 @@
 
 import * as React from 'react'
 import { Table as ResponsiveTable, Thead, Tbody, Tr, Th, Td } from 'react-super-responsive-table'
-import 'react-super-responsive-table/dist/SuperResponsiveTableStyle.css'
+import { Pagination } from './Pagination'
 
 export interface TableColumn<T> {
   key: string
@@ -26,7 +26,10 @@ export interface TableProps<T> {
   emptyMessage?: string
   className?: string
   tableId?: string
+  currentPage?: number
   defaultPageSize?: number
+  filters?: React.ReactNode
+  totalRecords?: number
 }
 
 export function Table<T extends Record<string, unknown>>({
@@ -37,45 +40,61 @@ export function Table<T extends Record<string, unknown>>({
   emptyMessage = 'No data available',
   className = '',
   tableId = 'data-table',
-  defaultPageSize = 10
+  currentPage = 1,
+  defaultPageSize = 10,
+  filters,
+  totalRecords
 }: TableProps<T>) {
-  // Store all data as JSON in a data attribute for client-side manipulation
-  const dataJson = JSON.stringify(data)
+  // Server-side pagination: store total records for pagination controls
+  const total = totalRecords ?? data.length
+  const totalPages = Math.max(1, Math.ceil(total / defaultPageSize))
+  const startIndex = total > 0 ? ((currentPage - 1) * defaultPageSize) + 1 : 0
+  const endIndex = Math.min(((currentPage - 1) * defaultPageSize) + data.length, total)
 
   return (
-    <div className={`w-full ${className}`} data-table-container={tableId} data-all-data={dataJson}>
-      {/* Search bar only at top */}
-      {searchable && (
-        <div className="mb-4">
-          <div className="relative max-w-sm">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
-              data-table-search={tableId}
-              placeholder={searchPlaceholder}
-              className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            />
-          </div>
+    <div className={`w-full ${className}`} data-table-container={tableId} data-total-records={total}>
+      {/* Search and Filters */}
+      {(searchable || filters) && (
+        <div className="mb-4 flex flex-col sm:flex-row gap-4">
+          {/* Search bar */}
+          {searchable && (
+            <div className="relative flex-1 max-w-sm">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              <input
+                type="text"
+                data-table-search={tableId}
+                placeholder={searchPlaceholder}
+                className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              />
+            </div>
+          )}
+
+          {/* Custom filters */}
+          {filters && (
+            <div className="flex flex-wrap gap-2">
+              {filters}
+            </div>
+          )}
         </div>
       )}
 
       {/* Table */}
       <div className="border border-border rounded-lg">
-        <ResponsiveTable className="w-full" data-table={tableId}>
+        <ResponsiveTable className="w-full responsiveTable" data-table={tableId}>
           <Thead className="bg-muted/50 border-b border-border">
             <Tr>
               {columns.map((column) => (
@@ -135,6 +154,7 @@ export function Table<T extends Record<string, unknown>>({
                       className={`px-4 py-3 text-sm ${column.className || ''}`}
                       style={column.width ? { width: column.width } : undefined}
                       data-column={column.key}
+                      data-label={column.label}
                       data-value={String(row[column.key] ?? '')}
                     >
                       {column.render
@@ -149,68 +169,34 @@ export function Table<T extends Record<string, unknown>>({
         </ResponsiveTable>
       </div>
 
-      {/* Pagination controls and results count */}
+      {/* Pagination controls */}
       <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        {/* Left: Show selector and results info */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Show</span>
-            <select
-              data-table-page-size={tableId}
-              className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-              defaultValue={defaultPageSize}
-            >
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-            <span className="text-sm text-muted-foreground">entries</span>
-          </div>
-          <div className="text-sm text-muted-foreground" data-table-info={tableId}>
-            Showing 1 to {Math.min(defaultPageSize, data.length)} of {data.length} entries
-          </div>
+        {/* Left: Page size selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Show</span>
+          <select
+            data-table-page-size={tableId}
+            className="px-3 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            defaultValue={defaultPageSize}
+          >
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span className="text-sm text-muted-foreground">entries</span>
         </div>
 
-        {/* Right: Pagination */}
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto" data-table-pagination={tableId}>
-          <button
-            data-table-first={tableId}
-            className="px-2 sm:px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            title="First page"
-          >
-            «
-          </button>
-          <button
-            data-table-prev={tableId}
-            className="px-2 sm:px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            title="Previous page"
-          >
-            ‹
-          </button>
-
-          {/* Page numbers will be inserted here by JavaScript */}
-          <div data-table-page-numbers={tableId} className="flex items-center gap-1">
-            <button className="px-2 sm:px-3 py-1.5 text-sm border border-border rounded bg-primary text-primary-foreground flex-shrink-0">
-              1
-            </button>
-          </div>
-
-          <button
-            data-table-next={tableId}
-            className="px-2 sm:px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            title="Next page"
-          >
-            ›
-          </button>
-          <button
-            data-table-last={tableId}
-            className="px-2 sm:px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            title="Last page"
-          >
-            »
-          </button>
-        </div>
+        {/* Right: Pagination component */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          showInfo={true}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          totalItems={total}
+          tableId={tableId}
+        />
       </div>
     </div>
   )

@@ -18,16 +18,62 @@ import {
 // TABLE STATE (must be declared before init runs)
 // ========================================
 
-interface TableState {
-  currentPage: number
-  pageSize: number
-  sortColumn: string | null
-  sortDirection: 'asc' | 'desc'
-  searchQuery: string
-  allRows: HTMLElement[]
+// Server-side filtering: no client-side state needed
+
+// URL query parameter helpers
+function getTableParams(tableId: string) {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    page: Number(params.get(`${tableId}_page`) || '1'),
+    pageSize: Number(params.get(`${tableId}_size`) || '10'),
+    sortColumn: params.get(`${tableId}_sort`) || null,
+    sortDirection: (params.get(`${tableId}_dir`) || 'asc') as 'asc' | 'desc',
+    search: params.get(`${tableId}_search`) || '',
+    method: params.get(`${tableId}_method`) || null,
+    dateStart: params.get(`${tableId}_date_start`) || null,
+    dateEnd: params.get(`${tableId}_date_end`) || null
+  }
 }
 
-const tableStates = new Map<string, TableState>()
+function updateTableParams(tableId: string, updates: Partial<ReturnType<typeof getTableParams>>) {
+  const params = new URLSearchParams(window.location.search)
+  const current = getTableParams(tableId)
+  const merged = { ...current, ...updates }
+
+  // Update or delete parameters
+  if (merged.page > 1) params.set(`${tableId}_page`, String(merged.page))
+  else params.delete(`${tableId}_page`)
+
+  if (merged.pageSize !== 10) params.set(`${tableId}_size`, String(merged.pageSize))
+  else params.delete(`${tableId}_size`)
+
+  if (merged.sortColumn) {
+    params.set(`${tableId}_sort`, merged.sortColumn)
+    params.set(`${tableId}_dir`, merged.sortDirection)
+  } else {
+    params.delete(`${tableId}_sort`)
+    params.delete(`${tableId}_dir`)
+  }
+
+  if (merged.search) params.set(`${tableId}_search`, merged.search)
+  else params.delete(`${tableId}_search`)
+
+  if (merged.method) params.set(`${tableId}_method`, merged.method)
+  else params.delete(`${tableId}_method`)
+
+  if (merged.dateStart && merged.dateEnd) {
+    params.set(`${tableId}_date_start`, merged.dateStart)
+    params.set(`${tableId}_date_end`, merged.dateEnd)
+  } else {
+    params.delete(`${tableId}_date_start`)
+    params.delete(`${tableId}_date_end`)
+  }
+
+  // Navigate to new URL with full page reload (server-side filtering)
+  const newUrl = `${window.location.pathname}?${params.toString()}`
+  console.log(`🔗 Navigating to: ${newUrl}`)
+  window.location.href = newUrl
+}
 
 // ========================================
 // INITIALIZATION
@@ -45,6 +91,8 @@ if (document.readyState === 'loading') {
 function init() {
   setupEventListeners()
   initializeTables()
+
+  // Browser back/forward will trigger full page reload automatically
 }
 
 // ========================================
@@ -624,50 +672,67 @@ function handleToggleUserMenu() {
 // ========================================
 
 function initializeTables() {
-  // Find all tables
+  console.log('🔧 Initializing tables (server-side filtering)...')
   const tableContainers = document.querySelectorAll('[data-table-container]')
 
   tableContainers.forEach((container) => {
     const tableId = container.getAttribute('data-table-container')
     if (!tableId) return
 
-    // Get all rows
-    const tbody = container.querySelector(`[data-table-body="${tableId}"]`)
-    if (!tbody) return
+    // Sync UI with URL parameters
+    const params = getTableParams(tableId)
 
-    const allRows = Array.from(tbody.querySelectorAll('[data-table-row]')) as HTMLElement[]
-
-    // Initialize state
+    // Sync page size selector
     const pageSizeSelect = container.querySelector(`[data-table-page-size="${tableId}"]`)
-    const pageSize = pageSizeSelect ? Number((pageSizeSelect as unknown as HTMLSelectElement).value) : 10
-    tableStates.set(tableId, {
-      currentPage: 1,
-      pageSize,
-      sortColumn: null,
-      sortDirection: 'asc',
-      searchQuery: '',
-      allRows
+    if (pageSizeSelect instanceof HTMLSelectElement) {
+      pageSizeSelect.value = String(params.pageSize)
+    }
+
+    // Sync search input
+    const searchInput = container.querySelector(`[data-table-search="${tableId}"]`) as HTMLInputElement
+    if (searchInput && params.search) {
+      searchInput.value = params.search
+    }
+
+    // Sync method filter buttons
+    const methodButtons = container.querySelectorAll('[data-filter-method]')
+    methodButtons.forEach((btn) => {
+      const method = btn.getAttribute('data-filter-method')
+      if (method === params.method || (method === 'all' && !params.method)) {
+        btn.classList.add('bg-primary', 'text-primary-foreground')
+        btn.classList.remove('hover:bg-muted')
+      }
     })
+
+    // Sync date filter
+    if (params.dateStart && params.dateEnd) {
+      const dateStartInput = container.querySelector('[data-filter-date-start]') as HTMLInputElement
+      const dateEndInput = container.querySelector('[data-filter-date-end]') as HTMLInputElement
+      const label = container.querySelector('[data-filter-label="date-range"]')
+
+      if (dateStartInput) dateStartInput.value = params.dateStart
+      if (dateEndInput) dateEndInput.value = params.dateEnd
+      if (label) {
+        const start = new Date(params.dateStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        const end = new Date(params.dateEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        label.textContent = `${start} - ${end}`
+      }
+    }
 
     // Setup event listeners
     setupTableEventListeners(tableId, container as HTMLElement)
-
-    // Initial render
-    renderTable(tableId)
   })
 }
 
 function setupTableEventListeners(tableId: string, container: HTMLElement) {
+  console.log(`🎧 Setting up event listeners for table: ${tableId}`)
+
   // Search input
   const searchInput = container.querySelector(`[data-table-search="${tableId}"]`)
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
-      const state = tableStates.get(tableId)
-      if (!state) return
-
-      state.searchQuery = (e.target as HTMLInputElement).value.toLowerCase().trim()
-      state.currentPage = 1 // Reset to first page on search
-      renderTable(tableId)
+      const query = (e.target as HTMLInputElement).value.toLowerCase().trim()
+      updateTableParams(tableId, { search: query, page: 1 })
     })
   }
 
@@ -675,12 +740,8 @@ function setupTableEventListeners(tableId: string, container: HTMLElement) {
   const pageSizeSelect = container.querySelector(`[data-table-page-size="${tableId}"]`)
   if (pageSizeSelect) {
     pageSizeSelect.addEventListener('change', (e) => {
-      const state = tableStates.get(tableId)
-      if (!state) return
-
-      state.pageSize = Number((e.target as HTMLSelectElement).value)
-      state.currentPage = 1 // Reset to first page on page size change
-      renderTable(tableId)
+      const pageSize = Number((e.target as HTMLSelectElement).value)
+      updateTableParams(tableId, { pageSize, page: 1 })
     })
   }
 
@@ -691,268 +752,128 @@ function setupTableEventListeners(tableId: string, container: HTMLElement) {
       const sortKey = header.getAttribute('data-sort-key')
       if (!sortKey) return
 
-      const state = tableStates.get(tableId)
-      if (!state) return
-
-      if (state.sortColumn === sortKey) {
-        state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc'
-      } else {
-        state.sortColumn = sortKey
-        state.sortDirection = 'asc'
-      }
-
-      renderTable(tableId)
+      const params = getTableParams(tableId)
+      const newDirection = params.sortColumn === sortKey && params.sortDirection === 'asc' ? 'desc' : 'asc'
+      updateTableParams(tableId, { sortColumn: sortKey, sortDirection: newDirection })
     })
   })
 
   // Pagination buttons
-  const firstButton = container.querySelector(`[data-table-first="${tableId}"]`)
-  const prevButton = container.querySelector(`[data-table-prev="${tableId}"]`)
-  const nextButton = container.querySelector(`[data-table-next="${tableId}"]`)
-  const lastButton = container.querySelector(`[data-table-last="${tableId}"]`)
-
-  if (firstButton) {
-    firstButton.addEventListener('click', () => {
-      const state = tableStates.get(tableId)
-      if (!state || state.currentPage === 1) return
-      state.currentPage = 1
-      renderTable(tableId)
-    })
-  }
+  const prevButton = container.querySelector(`[data-pagination-prev="${tableId}"]`)
+  const nextButton = container.querySelector(`[data-pagination-next="${tableId}"]`)
+  const pageButtons = container.querySelectorAll('[data-pagination-page]')
 
   if (prevButton) {
     prevButton.addEventListener('click', () => {
-      const state = tableStates.get(tableId)
-      if (!state || state.currentPage === 1) return
-      state.currentPage--
-      renderTable(tableId)
+      const params = getTableParams(tableId)
+      if (params.page > 1) {
+        updateTableParams(tableId, { page: params.page - 1 })
+      }
     })
   }
 
   if (nextButton) {
     nextButton.addEventListener('click', () => {
-      const state = tableStates.get(tableId)
-      if (!state) return
-
-      const filteredRows = getFilteredRows(tableId)
-      const totalPages = Math.ceil(filteredRows.length / state.pageSize)
-
-      if (state.currentPage < totalPages) {
-        state.currentPage++
-        renderTable(tableId)
+      const params = getTableParams(tableId)
+      const totalRecords = Number(container.getAttribute('data-total-records') || '0')
+      const totalPages = Math.ceil(totalRecords / params.pageSize)
+      if (params.page < totalPages) {
+        updateTableParams(tableId, { page: params.page + 1 })
       }
     })
   }
 
-  if (lastButton) {
-    lastButton.addEventListener('click', () => {
-      const state = tableStates.get(tableId)
-      if (!state) return
+  // Page number buttons
+  pageButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const pageNum = Number(button.getAttribute('data-pagination-page'))
+      if (pageNum) {
+        updateTableParams(tableId, { page: pageNum })
+      }
+    })
+  })
 
-      const filteredRows = getFilteredRows(tableId)
-      const totalPages = Math.ceil(filteredRows.length / state.pageSize)
+  // Method filter buttons
+  const methodButtons = container.querySelectorAll('[data-filter-method]')
+  methodButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const method = button.getAttribute('data-filter-method')
 
-      if (state.currentPage !== totalPages) {
-        state.currentPage = totalPages
-        renderTable(tableId)
+      // Update button styles
+      methodButtons.forEach((btn) => {
+        btn.classList.remove('bg-primary', 'text-primary-foreground')
+        btn.classList.add('hover:bg-muted')
+      })
+      button.classList.add('bg-primary', 'text-primary-foreground')
+      button.classList.remove('hover:bg-muted')
+
+      // Update URL
+      updateTableParams(tableId, { method: method === 'all' ? null : method, page: 1 })
+    })
+  })
+
+  // Date range filter toggle
+  const dateToggle = container.querySelector('[data-filter-toggle="date-range"]')
+  const dateDropdown = container.querySelector('[data-filter-dropdown="date-range"]')
+  const dateStartInput = container.querySelector('[data-filter-date-start]') as HTMLInputElement
+  const dateEndInput = container.querySelector('[data-filter-date-end]') as HTMLInputElement
+  const dateClear = container.querySelector('[data-filter-clear="date-range"]')
+  const dateApply = container.querySelector('[data-filter-apply="date-range"]')
+
+  if (dateToggle && dateDropdown) {
+    dateToggle.addEventListener('click', (e) => {
+      e.stopPropagation()
+      dateDropdown.classList.toggle('hidden')
+    })
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement
+      if (!dateDropdown.contains(target) && !dateToggle.contains(target)) {
+        dateDropdown.classList.add('hidden')
       }
     })
   }
-}
 
-function getFilteredRows(tableId: string): HTMLElement[] {
-  const state = tableStates.get(tableId)
-  if (!state) return []
+  if (dateClear) {
+    dateClear.addEventListener('click', () => {
+      if (dateStartInput) dateStartInput.value = ''
+      if (dateEndInput) dateEndInput.value = ''
 
-  let filtered = state.allRows
+      const label = container.querySelector('[data-filter-label="date-range"]')
+      if (label) label.textContent = 'All dates'
 
-  // Apply search filter
-  if (state.searchQuery.trim()) {
-    filtered = filtered.filter((row) => {
-      const cells = row.querySelectorAll('[data-value]')
-      return Array.from(cells).some((cell) => {
-        const value = cell.getAttribute('data-value') || ''
-        return value.toLowerCase().includes(state.searchQuery)
+      if (dateDropdown) dateDropdown.classList.add('hidden')
+
+      // Clear URL parameters
+      updateTableParams(tableId, { dateStart: null, dateEnd: null, page: 1 })
+    })
+  }
+
+  if (dateApply) {
+    dateApply.addEventListener('click', () => {
+      if (!dateStartInput?.value || !dateEndInput?.value) {
+        alert('Please select both start and end dates')
+        return
+      }
+
+      const label = container.querySelector('[data-filter-label="date-range"]')
+      if (label) {
+        const start = new Date(dateStartInput.value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        const end = new Date(dateEndInput.value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        label.textContent = `${start} - ${end}`
+      }
+
+      if (dateDropdown) dateDropdown.classList.add('hidden')
+
+      // Update URL parameters
+      updateTableParams(tableId, {
+        dateStart: dateStartInput.value,
+        dateEnd: dateEndInput.value,
+        page: 1
       })
     })
   }
-
-  // Apply sorting
-  if (state.sortColumn) {
-    filtered = [...filtered].sort((a, b) => {
-      const aCell = a.querySelector(`[data-column="${state.sortColumn}"]`)
-      const bCell = b.querySelector(`[data-column="${state.sortColumn}"]`)
-
-      const aValue = aCell?.getAttribute('data-value') || ''
-      const bValue = bCell?.getAttribute('data-value') || ''
-
-      // Try numeric comparison first
-      const aNum = Number(aValue)
-      const bNum = Number(bValue)
-
-      let comparison = 0
-      if (!isNaN(aNum) && !isNaN(bNum)) {
-        comparison = aNum - bNum
-      } else {
-        comparison = aValue.localeCompare(bValue)
-      }
-
-      return state.sortDirection === 'asc' ? comparison : -comparison
-    })
-  }
-
-  return filtered
 }
 
-function renderTable(tableId: string) {
-  const state = tableStates.get(tableId)
-  if (!state) return
-
-  const container = document.querySelector(`[data-table-container="${tableId}"]`)
-  if (!container) return
-
-  const filtered = getFilteredRows(tableId)
-  const totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize))
-  const startIndex = (state.currentPage - 1) * state.pageSize
-  const endIndex = startIndex + state.pageSize
-
-  // Hide all rows first
-  state.allRows.forEach((row) => {
-    row.style.display = 'none'
-  })
-
-  // Show only the rows for the current page
-  filtered.slice(startIndex, endIndex).forEach((row) => {
-    row.style.display = ''
-  })
-
-  // Update sort icons
-  const sortableHeaders = container.querySelectorAll('[data-sortable="true"]')
-  sortableHeaders.forEach((header) => {
-    const sortKey = header.getAttribute('data-sort-key')
-    const icon = header.querySelector(`[data-sort-icon="${sortKey}"]`)
-
-    if (!icon) return
-
-    // Clear existing content
-    icon.innerHTML = ''
-
-    // Create sort icon SVG
-    const sortSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    sortSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-    sortSvg.setAttribute('width', '14')
-    sortSvg.setAttribute('height', '14')
-    sortSvg.setAttribute('viewBox', '0 0 24 24')
-    sortSvg.setAttribute('fill', 'none')
-    sortSvg.setAttribute('stroke', 'currentColor')
-    sortSvg.setAttribute('stroke-width', '2')
-    sortSvg.setAttribute('stroke-linecap', 'round')
-    sortSvg.setAttribute('stroke-linejoin', 'round')
-
-    if (state.sortColumn === sortKey) {
-      // Show active sort icon
-      if (state.sortDirection === 'asc') {
-        const sortPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-        sortPath.setAttribute('d', 'm18 15-6-6-6 6')
-        sortSvg.appendChild(sortPath)
-      } else {
-        const sortPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-        sortPath.setAttribute('d', 'm6 9 6 6 6-6')
-        sortSvg.appendChild(sortPath)
-      }
-    } else {
-      // Show inactive sort icon
-      sortSvg.setAttribute('class', 'opacity-50')
-      const sortPath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-      sortPath1.setAttribute('d', 'm7 15 5 5 5-5')
-      const sortPath2 = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-      sortPath2.setAttribute('d', 'm7 9 5-5 5 5')
-      sortSvg.appendChild(sortPath1)
-      sortSvg.appendChild(sortPath2)
-    }
-
-    icon.appendChild(sortSvg)
-  })
-
-  // Update table info (e.g., "Showing 1 to 10 of 45 entries")
-  const tableInfo = container.querySelector(`[data-table-info="${tableId}"]`)
-  if (tableInfo) {
-    const showing = filtered.slice(startIndex, endIndex).length
-    const start = filtered.length > 0 ? startIndex + 1 : 0
-    const end = startIndex + showing
-    tableInfo.textContent = `Showing ${start} to ${end} of ${filtered.length} entries`
-  }
-
-  // Generate page numbers
-  const pageNumbersContainer = container.querySelector(`[data-table-page-numbers="${tableId}"]`)
-  if (pageNumbersContainer) {
-    pageNumbersContainer.innerHTML = ''
-
-    // Generate page number buttons (show max 7 pages)
-    const maxVisiblePages = 7
-    let startPage = 1
-    let endPage = totalPages
-
-    if (totalPages > maxVisiblePages) {
-      const halfVisible = Math.floor(maxVisiblePages / 2)
-      startPage = Math.max(1, state.currentPage - halfVisible)
-      endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-      if (endPage - startPage < maxVisiblePages - 1) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1)
-      }
-    }
-
-    // Add ellipsis before if needed
-    if (startPage > 1) {
-      const ellipsisSpan = document.createElement('span')
-      ellipsisSpan.className = 'px-2 py-1.5 text-sm text-muted-foreground'
-      ellipsisSpan.textContent = '...'
-      pageNumbersContainer.appendChild(ellipsisSpan)
-    }
-
-    // Add page number buttons
-    for (let i = startPage; i <= endPage; i++) {
-      const pageBtn = document.createElement('button')
-      pageBtn.className = `px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors ${
-        i === state.currentPage ? 'bg-primary text-primary-foreground hover:bg-primary' : ''
-      }`
-      pageBtn.textContent = String(i)
-      pageBtn.onclick = () => {
-        state.currentPage = i
-        renderTable(tableId)
-      }
-      pageNumbersContainer.appendChild(pageBtn)
-    }
-
-    // Add ellipsis after if needed
-    if (endPage < totalPages) {
-      const ellipsisSpan = document.createElement('span')
-      ellipsisSpan.className = 'px-2 py-1.5 text-sm text-muted-foreground'
-      ellipsisSpan.textContent = '...'
-      pageNumbersContainer.appendChild(ellipsisSpan)
-    }
-  }
-
-  // Update button states
-  const firstButton = container.querySelector(`[data-table-first="${tableId}"]`) as HTMLButtonElement
-  const prevButton = container.querySelector(`[data-table-prev="${tableId}"]`) as HTMLButtonElement
-  const nextButton = container.querySelector(`[data-table-next="${tableId}"]`) as HTMLButtonElement
-  const lastButton = container.querySelector(`[data-table-last="${tableId}"]`) as HTMLButtonElement
-
-  if (firstButton) {
-    firstButton.disabled = state.currentPage === 1
-  }
-
-  if (prevButton) {
-    prevButton.disabled = state.currentPage === 1
-  }
-
-  if (nextButton) {
-    nextButton.disabled = state.currentPage >= totalPages
-  }
-
-  if (lastButton) {
-    lastButton.disabled = state.currentPage >= totalPages
-  }
-}
+// Server-side filtering: getFilteredRows and renderTable removed (all logic happens on server)

@@ -105,31 +105,55 @@ function parseDevVars(filePath) {
 }
 
 async function main() {
-  console.log('🔐 Uploading Secrets from .dev.vars...');
+  console.log('🔐 Uploading Secrets to Cloudflare...');
   console.log('═'.repeat(60));
 
   const adminDir = './admin';
   const devVarsPath = join(adminDir, '.dev.vars');
+  const prodVarsPath = join(adminDir, '.dev.vars.production');
 
-  // Check if .dev.vars exists
-  if (!existsSync(devVarsPath)) {
-    console.error('❌ .dev.vars file not found at:', devVarsPath);
-    console.error('   Please create this file with your secrets.');
+  // Determine which file to use
+  let secretsPath;
+  let environment;
+
+  if (existsSync(prodVarsPath)) {
+    secretsPath = prodVarsPath;
+    environment = 'production';
+    console.log('\n✅ Found .dev.vars.production - using PRODUCTION secrets');
+  } else if (existsSync(devVarsPath)) {
+    secretsPath = devVarsPath;
+    environment = 'development';
+    console.log('\n⚠️  Using .dev.vars (development secrets)');
+    console.log('   💡 For production, create .dev.vars.production with production BASE_URL');
+  } else {
+    console.error('❌ No secrets file found!');
+    console.error('   Expected either:');
+    console.error('   - .dev.vars.production (recommended for deployment)');
+    console.error('   - .dev.vars (fallback)');
     process.exit(1);
   }
 
   try {
-    // Parse secrets from .dev.vars
-    console.log('\n📖 Reading secrets from .dev.vars...');
-    const secrets = parseDevVars(devVarsPath);
+    // Parse secrets from chosen file
+    console.log(`\n📖 Reading secrets from ${secretsPath.split('/').pop()}...`);
+    const secrets = parseDevVars(secretsPath);
 
     const secretKeys = Object.keys(secrets);
     if (secretKeys.length === 0) {
-      console.log('⚠️  No secrets found in .dev.vars');
+      console.log('⚠️  No secrets found in file');
       return;
     }
 
     console.log(`   Found ${secretKeys.length} secrets: ${secretKeys.join(', ')}`);
+
+    // Warn if using localhost BASE_URL for production
+    if (secrets.BASE_URL && secrets.BASE_URL.includes('localhost')) {
+      console.log('\n⚠️  WARNING: BASE_URL contains localhost!');
+      console.log('   This will break OAuth in production.');
+      console.log('   💡 Create .dev.vars.production with production BASE_URL');
+    } else if (secrets.BASE_URL) {
+      console.log(`\n✅ BASE_URL: ${secrets.BASE_URL}`);
+    }
 
     // Upload each secret
     console.log('\n🚀 Uploading secrets to Cloudflare...');

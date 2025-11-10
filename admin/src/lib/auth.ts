@@ -17,11 +17,15 @@ export function createAuth(env: Bindings) {
 
   const auth = betterAuth({
     baseURL: env.BASE_URL || 'http://localhost:5173',
-    secret: env.BETTER_AUTH_SECRET,
+    secret: env.BETTER_AUTH_SECRET || 'dev-secret-key-min-32-chars-long!!',
 
     database: drizzleAdapter(db, {
       provider: 'sqlite',
     }),
+
+    // Use D1 for session storage (not KV) since we're using Drizzle adapter
+    // Sessions are stored in the database alongside user data
+    secondaryStorage: undefined,
 
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) => {

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import 'react-super-responsive-table/dist/SuperResponsiveTableStyle.css';
 
 @source "../**/*.{ts,tsx}";
 
@@ -157,6 +158,7 @@
     color: hsl(var(--btn-fg));
     --tw-ring-color: hsl(var(--btn-ring));
     border: 1px solid transparent;
+    cursor: pointer;
   }
   .btn:focus {
     --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
@@ -220,10 +222,64 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
-  .btn-disabled {
+  .btn-disabled,
+  .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    pointer-events: none;
+  }
+
+  /* Prevent ALL hover effects on disabled buttons - no pointer-events to allow :hover */
+  .btn:disabled:hover,
+  .btn.btn:disabled:hover,
+  .btn-primary:disabled:hover,
+  .btn-ghost:disabled:hover,
+  .btn-soft:disabled:hover,
+  .btn-outline:disabled:hover {
+    opacity: 0.5 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    cursor: not-allowed !important;
+  }
+
+  /* Reset backgrounds for ghost disabled buttons */
+  .btn-ghost:disabled:hover {
+    background-color: transparent !important;
+  }
+
+  /* Reset backgrounds for soft disabled buttons */
+  .btn-soft:disabled:hover {
+    background-color: color-mix(in srgb, hsl(var(--btn-bg)) 10%, transparent) !important;
+  }
+
+  /* Reset backgrounds for outline disabled buttons */
+  .btn-outline:disabled:hover {
+    background-color: transparent !important;
+  }
+
+  /* Also handle class-based disabled for backwards compatibility */
+  .btn-disabled:hover,
+  .btn.btn-disabled:hover,
+  .btn-ghost.btn-disabled:hover,
+  .btn-soft.btn-disabled:hover,
+  .btn-outline.btn-disabled:hover {
+    opacity: 0.5 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    cursor: not-allowed !important;
+  }
+
+  .btn-ghost.btn-disabled:hover {
+    background-color: transparent !important;
+  }
+
+  .btn-soft.btn-disabled:hover {
+    background-color: color-mix(in srgb, hsl(var(--btn-bg)) 10%, transparent) !important;
+  }
+
+  .btn-outline.btn-disabled:hover {
+    background-color: transparent !important;
   }
 
   /* Size variants */
@@ -388,5 +444,167 @@
 
   .hljs-strong {
     font-weight: bold;
+  }
+}
+
+/* React Super Responsive Table - Mobile Styles */
+@layer components {
+  /* Desktop: Normal table display */
+  @media (min-width: 768px) {
+    .responsiveTable thead {
+      display: table-header-group !important;
+    }
+
+    .responsiveTable tbody {
+      display: table-row-group !important;
+    }
+
+    .responsiveTable tr {
+      display: table-row !important;
+    }
+
+    .responsiveTable th,
+    .responsiveTable td {
+      display: table-cell !important;
+    }
+  }
+
+  /* Mobile: Card-based layout */
+  @media (max-width: 767px) {
+    /* Hide table header on mobile */
+    .responsiveTable thead {
+      display: none !important;
+    }
+
+    /* Each row becomes a card */
+    .responsiveTable tbody {
+      display: block;
+    }
+
+    .responsiveTable tr {
+      display: block;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background-color: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.5rem;
+    }
+
+    .responsiveTable tr:hover {
+      background-color: hsl(var(--muted) / 0.3);
+    }
+
+    /* All cells as blocks */
+    .responsiveTable td {
+      display: block;
+      padding: 0 !important;
+      border: none !important;
+      text-align: left !important;
+    }
+
+    /* Headers cell (contains datetime too) - first */
+    .responsiveTable td[data-column="headers"] {
+      margin-bottom: 0.75rem;
+    }
+
+    /* Payload cell - no extra spacing */
+    .responsiveTable td[data-column="data"] {
+      /* No extra styles needed */
+    }
+
+    /* Hide columns with max-md:hidden class */
+    .responsiveTable td.max-md\:hidden {
+      display: none !important;
+    }
+  }
+}
+
+/* React Day Picker - Dark Theme Styles */
+@layer components {
+  .rdp-custom {
+    --rdp-cell-size: 36px;
+    --rdp-accent-color: hsl(var(--primary));
+    --rdp-background-color: hsl(var(--primary) / 0.1);
+    font-size: 0.875rem;
+  }
+
+  .rdp-custom .rdp-months {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .rdp-custom .rdp-month {
+    width: 100%;
+  }
+
+  .rdp-custom .rdp-caption {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+    color: hsl(var(--foreground));
+    font-weight: 500;
+  }
+
+  .rdp-custom .rdp-head_cell {
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+
+  .rdp-custom .rdp-cell {
+    padding: 2px;
+  }
+
+  .rdp-custom .rdp-day {
+    width: var(--rdp-cell-size);
+    height: var(--rdp-cell-size);
+    border-radius: 0.375rem;
+    color: hsl(var(--foreground));
+    transition: all 0.2s;
+  }
+
+  .rdp-custom .rdp-day:hover:not(.rdp-day_disabled):not(.rdp-day_selected) {
+    background-color: hsl(var(--muted));
+  }
+
+  .rdp-custom .rdp-day_selected {
+    background-color: var(--rdp-accent-color);
+    color: hsl(var(--primary-foreground));
+    font-weight: 500;
+  }
+
+  .rdp-custom .rdp-day_selected:hover {
+    background-color: var(--rdp-accent-color);
+    opacity: 0.9;
+  }
+
+  .rdp-custom .rdp-day_disabled {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.5;
+  }
+
+  .rdp-custom .rdp-day_outside {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.5;
+  }
+
+  .rdp-custom .rdp-day_range_middle {
+    background-color: var(--rdp-background-color);
+    color: hsl(var(--foreground));
+    border-radius: 0;
+  }
+
+  .rdp-custom .rdp-day_range_start,
+  .rdp-custom .rdp-day_range_end {
+    background-color: var(--rdp-accent-color);
+    color: hsl(var(--primary-foreground));
+  }
+
+  .rdp-custom .rdp-day_today {
+    font-weight: 600;
+    border: 1px solid hsl(var(--primary));
   }
 }

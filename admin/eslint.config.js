@@ -33,6 +33,7 @@ export default [
         Element: 'readonly',
         Response: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         Error: 'readonly',
         Date: 'readonly',
         JSON: 'readonly',

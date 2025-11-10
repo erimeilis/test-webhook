@@ -11,6 +11,18 @@ A modern admin panel for the webhook system built with Hono, React, and Cloudfla
 - **Email**: Resend API
 - **Styling**: Tailwind CSS v4 with dark theme
 - **ORM**: Drizzle
+- **UI Components**: React component architecture with shadcn/ui patterns
+
+## Features
+
+- ✅ Google OAuth + Email/Password authentication
+- ✅ Email verification via Resend
+- ✅ Webhook management (create, view, delete, share)
+- ✅ Server-side pagination (scalable to 100,500+ records)
+- ✅ Webhook data collection and filtering
+- ✅ Dark theme with professional UI components
+- ✅ Responsive design with mobile support
+- 🔄 Token rotation (planned)
 
 ## Prerequisites
 

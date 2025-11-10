@@ -18,6 +18,7 @@ webhook-worker/target/
 # Environment
 .env
 .dev.vars
+.dev.vars.production
 .env.local
 .env.production
 .env.*.local
