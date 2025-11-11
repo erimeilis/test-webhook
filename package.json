@@ -1,6 +1,6 @@
 {
   "name": "test-webhook",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "High-performance webhook ingestion and management system built on Cloudflare Workers",
   "private": true,
   "type": "module",

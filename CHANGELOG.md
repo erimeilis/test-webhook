@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.1] - 2025-11-11
+## [0.4.0] - 2025-11-12
 
 ### Added ✨
 - **Dynamic webhook fetching for load tests** - Automatically queries D1 database for admin user's first webhook
