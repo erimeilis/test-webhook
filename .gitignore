@@ -80,3 +80,7 @@ webhook-worker/Cargo.lock
 /admin/docs/
 /docs/
 /CLAUDE.md
+
+# Load testing
+.webhook-uuid
+load-test-results/

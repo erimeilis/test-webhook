@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.3.1] - 2025-11-11
+
+### Added ✨
+- **Dynamic webhook fetching for load tests** - Automatically queries D1 database for admin user's first webhook
+- `scripts/get-admin-webhook.js` - Node.js script to fetch admin webhook UUID from database
+- Multi-tiered fallback strategy for webhook resolution:
+  - Primary: Database query (production or local)
+  - Fallback 1: `.webhook-uuid` file (gitignored)
+  - Fallback 2: `WEBHOOK_UUID` environment variable
+  - Fallback 3: `WEBHOOK_URL` environment variable
+- Local vs production testing support via `USE_LOCAL_DB` environment variable
+- Load testing documentation in README with prerequisites and test profile details
+
+### Changed 🔄
+- Load test scripts now default to production webhook testing
+- Updated `npm run load-test:*` scripts to use dynamic webhook fetching
+- Added `npm run load-test:local` and `npm run load-test:local:light` for local testing
+- Enhanced `scripts/run-load-test.sh` with intelligent webhook resolution and error messaging
+
+### Security 🔒
+- **Removed hardcoded production webhook UUIDs** from all scripts and package.json
+- Added `.webhook-uuid` to `.gitignore` (stores local production webhook UUID)
+- Added `load-test-results/` to `.gitignore` (contains test data with webhook URLs)
+- All webhook UUIDs now resolved dynamically at runtime
+
+### Fixed 🐛
+- Shell escaping issues in database queries (switched to temp file approach)
+- Database query timeout handling (5-second timeout in bash, 10-second in Node.js)
+- JSON parsing for wrangler D1 execute output
+- Connection handling for local vs production database selection
+
+---
+
 ## [0.3.0] - 2025-11-10
 
 ### Added ✨

@@ -21,7 +21,15 @@
     "db:seed": "cd admin && npm run db:seed",
     "type-check": "cd admin && npm run type-check",
     "lint": "cd admin && npm run lint",
-    "lint:fix": "cd admin && npm run lint:fix"
+    "lint:fix": "cd admin && npm run lint:fix",
+    "load-test": "cd scripts && ./run-load-test.sh medium",
+    "load-test:light": "cd scripts && ./run-load-test.sh light",
+    "load-test:medium": "cd scripts && ./run-load-test.sh medium",
+    "load-test:heavy": "cd scripts && ./run-load-test.sh heavy",
+    "load-test:extreme": "cd scripts && ./run-load-test.sh extreme",
+    "load-test:stress": "cd scripts && ./run-load-test.sh stress",
+    "load-test:local": "export USE_LOCAL_DB=true && cd scripts && ./run-load-test.sh medium",
+    "load-test:local:light": "export USE_LOCAL_DB=true && cd scripts && ./run-load-test.sh light"
   },
   "keywords": [
     "webhook",
