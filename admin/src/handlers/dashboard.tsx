@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { WebhookCard } from '@/components/WebhookCard'
 import { Table, type TableColumn } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch'
 import { AdminPanel, type UserStats } from '@/components/AdminPanel'
 import { WebhookFilters } from '@/components/WebhookFilters'
 import { drizzle } from 'drizzle-orm/d1'
@@ -296,6 +297,7 @@ export async function handleDashboard(c: AppContext) {
   let page = 1
   let pageSize = 10
   let totalRecords = 0
+  let methodFilter: string | null = null
 
   if (webhookId) {
     // Verify webhook belongs to user OR is shared with them
@@ -326,7 +328,7 @@ export async function handleDashboard(c: AppContext) {
         const sortColumn = searchParams.get('requests_table_sort') || 'received_at'
         const sortDirection = searchParams.get('requests_table_dir') || 'desc'
         const searchQuery = searchParams.get('requests_table_search') || ''
-        const methodFilter = searchParams.get('requests_table_method') || null
+        methodFilter = searchParams.get('requests_table_method') || null
         const dateStart = searchParams.get('requests_table_date_start') || null
         const dateEnd = searchParams.get('requests_table_date_end') || null
 
@@ -822,26 +824,17 @@ export async function handleDashboard(c: AppContext) {
                       </div>
 
                       {/* Method Filter */}
-                      <div className="flex gap-1 border border-border rounded-lg p-1">
-                        <button
-                          data-filter-method="all"
-                          className="px-3 py-1 text-sm rounded bg-primary text-primary-foreground transition-colors"
-                        >
-                          All
-                        </button>
-                        <button
-                          data-filter-method="GET"
-                          className="px-3 py-1 text-sm rounded hover:bg-muted transition-colors"
-                        >
-                          GET
-                        </button>
-                        <button
-                          data-filter-method="POST"
-                          className="px-3 py-1 text-sm rounded hover:bg-muted transition-colors"
-                        >
-                          POST
-                        </button>
-                      </div>
+                      <ToggleSwitch
+                        options={[
+                          { value: 'all', label: 'All' },
+                          { value: 'GET', label: 'GET' },
+                          { value: 'POST', label: 'POST' },
+                        ]}
+                        defaultValue={methodFilter || 'all'}
+                        dataAttribute="method-filter"
+                        color="primary"
+                        style="soft"
+                      />
                     </>
                   }
                 />

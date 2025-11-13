@@ -5,6 +5,7 @@
 export type Bindings = {
   DB: D1Database
   SESSIONS: KVNamespace
+  WEBHOOK_CACHE: KVNamespace
   __STATIC_CONTENT: KVNamespace
   __STATIC_CONTENT_MANIFEST: string
   BASE_URL: string

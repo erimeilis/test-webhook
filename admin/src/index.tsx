@@ -4,20 +4,20 @@
  */
 
 import { Hono } from 'hono'
+import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types'
 import { reactRenderer } from '@hono/react-renderer'
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 // @ts-expect-error - This is provided by Wrangler
 import manifest from '__STATIC_CONTENT_MANIFEST'
 import type { Bindings, Variables } from '@/types/hono'
 import { createAuth } from '@/lib/auth'
-import { createEmailService } from '@/lib/email'
-import { handleLoginPage, handleSignupPage, handleVerifyEmailPage, handleResetPasswordPage, handleTestEmailPage } from '@/handlers/auth'
+import { handleLoginPage, handleSignupPage, handleVerifyEmailPage, handleResetPasswordPage } from '@/handlers/auth'
 import { handleDashboard } from '@/handlers/dashboard'
-import { handleTestTable } from '@/handlers/test-table'
 import { listWebhooks, createWebhook, updateWebhook, deleteWebhook, getWebhookData } from '@/handlers/webhooks'
 import { getCodeExamples } from '@/handlers/code-examples'
 import { shareWebhook, listCollaborators, removeCollaborator } from '@/handlers/webhook-sharing'
 import { listUsers, impersonateUser, stopImpersonation } from '@/handlers/admin'
+import { cleanupOldData } from '@/handlers/cleanup'
 import { authMiddleware } from '@/middleware/auth'
 
 // Initialize Hono app
@@ -89,62 +89,26 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok', timestamp: Date.now() })
 })
 
-// Test email route
-app.post('/api/test-email', async (c) => {
+// Test cleanup route (for development/testing)
+app.post('/api/test-cleanup', authMiddleware, async (c) => {
   try {
-    const { email } = await c.req.json()
-
-    if (!email) {
-      return c.json({ error: 'Email is required' }, 400)
-    }
-
-    const emailService = createEmailService(c.env.RESEND_API_KEY, c.env.FROM_EMAIL)
-
-    await emailService.sendEmail({
-      to: email,
-      subject: 'Test Email from Webhook Admin',
-      html: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-              .header h1 { color: white; margin: 0; }
-              .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
-              .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>Test Email</h1>
-              </div>
-              <div class="content">
-                <p>This is a test email from the Webhook Admin Panel.</p>
-                <p>If you received this email, the email service is working correctly!</p>
-                <p><strong>Sent at:</strong> ${new Date().toISOString()}</p>
-              </div>
-              <div class="footer">
-                <p>Webhook Admin Panel</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `,
-    })
-
-    console.log('✅ Test email sent successfully to:', email)
-    return c.json({ success: true, message: 'Test email sent successfully!' })
-  } catch (error) {
-    console.error('❌ Failed to send test email:', error)
+    console.log('🧹 Manual cleanup triggered by:', c.var.user?.id)
+    const result = await cleanupOldData(c.env)
     return c.json({
-      error: error instanceof Error ? error.message : 'Failed to send test email'
+      success: true,
+      deletedCount: result.deletedCount,
+      cutoffDate: result.cutoffDate.toISOString(),
+      message: `Deleted ${result.deletedCount} records older than ${result.cutoffDate.toISOString()}`
+    })
+  } catch (error) {
+    console.error('🚨 Manual cleanup error:', error)
+    return c.json({
+      error: 'Cleanup failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })
+
 
 // Webhook API routes (protected)
 app.get('/api/webhooks', authMiddleware, listWebhooks)
@@ -182,14 +146,10 @@ app.get('/login', handleLoginPage)
 app.get('/signup', handleSignupPage)
 app.get('/verify-email', handleVerifyEmailPage)
 app.get('/reset-password', handleResetPasswordPage)
-app.get('/test-email', handleTestEmailPage)
 
 // Protected routes
 app.get('/dashboard', authMiddleware, handleDashboard)
 app.get('/dashboard/:id', authMiddleware, handleDashboard)
-
-// Test routes
-app.get('/test-table', handleTestTable)
 
 // Static assets
 app.get('*', async (c) => {
@@ -218,4 +178,28 @@ app.get('*', async (c) => {
   return c.notFound()
 })
 
-export default app
+// Export both the Hono app (for HTTP requests) and scheduled handler (for cron triggers)
+export default {
+  // Handle regular HTTP requests
+  fetch: app.fetch,
+
+  // Handle scheduled events (cron triggers)
+  async scheduled(
+    controller: ScheduledEvent,
+    env: Bindings,
+    _ctx: ExecutionContext
+  ): Promise<void> {
+    console.log('⏰ Scheduled cleanup triggered at:', new Date(controller.scheduledTime).toISOString())
+
+    try {
+      const result = await cleanupOldData(env)
+      console.log(`✅ Cleanup successful: deleted ${result.deletedCount} records older than ${result.cutoffDate.toISOString()}`)
+      if (result.deletedCount > 0 && env.ADMIN_EMAIL) {
+        console.log(`📧 Email notification sent to ${env.ADMIN_EMAIL}`)
+      }
+    } catch (error) {
+      console.error('❌ Scheduled cleanup failed:', error)
+      // Don't throw - just log the error so the worker doesn't fail
+    }
+  }
+}

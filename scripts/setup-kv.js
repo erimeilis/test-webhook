@@ -2,8 +2,8 @@
 
 /**
  * KV Namespace Setup Script
- * Creates KV namespace for Better Auth sessions if it doesn't exist
- * Updates wrangler.toml with the correct namespace ID
+ * Creates KV namespaces for Better Auth sessions and webhook cache if they don't exist
+ * Updates wrangler.toml files with the correct namespace IDs
  *
  * Usage: node scripts/setup-kv.js
  */
@@ -66,71 +66,112 @@ function extractNamespaceId(output) {
 }
 
 // Update wrangler.toml with KV namespace ID
-function updateWranglerToml(namespaceId) {
-  const wranglerPath = join('./admin', 'wrangler.toml');
-  let content = readFileSync(wranglerPath, 'utf8');
+function updateWranglerToml(filePath, binding, namespaceId) {
+  let content = readFileSync(filePath, 'utf8');
 
-  // Replace the placeholder ID
-  content = content.replace(
-    /id\s*=\s*"YOUR_KV_NAMESPACE_ID"/,
-    `id = "${namespaceId}"`
+  // Check if namespace binding already exists
+  const bindingRegex = new RegExp(`binding\\s*=\\s*"${binding}"[\\s\\S]*?id\\s*=\\s*"([^"]+)"`, 'm');
+  const match = content.match(bindingRegex);
+
+  if (match && match[1] !== 'YOUR_KV_NAMESPACE_ID') {
+    // Already configured with valid ID
+    return match[1];
+  }
+
+  // Replace the placeholder ID or add new binding
+  if (content.includes(`binding = "${binding}"`)) {
+    // Binding exists, update ID
+    content = content.replace(
+      new RegExp(`(binding\\s*=\\s*"${binding}"[\\s\\S]*?id\\s*=\\s*)"YOUR_KV_NAMESPACE_ID"`, 'm'),
+      `$1"${namespaceId}"`
+    );
+  } else {
+    // Add new binding before the last line
+    const lines = content.split('\n');
+    const kvBinding = `\n# KV namespace for ${binding}\n[[kv_namespaces]]\nbinding = "${binding}"\nid = "${namespaceId}"\n`;
+
+    // Insert before last empty lines
+    let insertIndex = lines.length;
+    while (insertIndex > 0 && lines[insertIndex - 1].trim() === '') {
+      insertIndex--;
+    }
+
+    lines.splice(insertIndex, 0, kvBinding);
+    content = lines.join('\n');
+  }
+
+  writeFileSync(filePath, content, 'utf8');
+  return namespaceId;
+}
+
+// Setup a KV namespace
+async function setupNamespace(binding, workerDir) {
+  const wranglerPath = join(workerDir, 'wrangler.toml');
+  const currentConfig = readFileSync(wranglerPath, 'utf8');
+
+  // Check if already configured
+  const bindingRegex = new RegExp(`binding\\s*=\\s*"${binding}"[\\s\\S]*?id\\s*=\\s*"([^"]+)"`, 'm');
+  const match = currentConfig.match(bindingRegex);
+
+  if (match && match[1] !== 'YOUR_KV_NAMESPACE_ID') {
+    console.log(`   ✅ ${binding} already configured: ${match[1]}`);
+    return match[1];
+  }
+
+  // Create KV namespace
+  console.log(`   Creating ${binding} namespace...`);
+  const { stdout, stderr } = await runCommand(
+    'wrangler',
+    ['kv', 'namespace', 'create', binding],
+    { cwd: workerDir }
   );
 
-  writeFileSync(wranglerPath, content, 'utf8');
+  // Extract namespace ID from output
+  const output = stdout + stderr;
+  const namespaceId = extractNamespaceId(output);
+
+  if (!namespaceId) {
+    throw new Error(`Could not extract namespace ID for ${binding} from wrangler output`);
+  }
+
+  console.log(`   ✅ Created ${binding}: ${namespaceId}`);
+
+  // Update wrangler.toml
+  updateWranglerToml(wranglerPath, binding, namespaceId);
+  console.log(`   ✅ Updated ${workerDir}/wrangler.toml`);
+
+  return namespaceId;
 }
 
 async function main() {
-  console.log('🗄️  Setting up KV Namespace for Sessions...');
+  console.log('🗄️  Setting up KV Namespaces...');
   console.log('═'.repeat(60));
 
   const adminDir = './admin';
-  const wranglerPath = join(adminDir, 'wrangler.toml');
+  const webhookDir = './webhook-worker';
 
   try {
-    // Check current wrangler.toml
-    const currentConfig = readFileSync(wranglerPath, 'utf8');
+    // Setup SESSIONS namespace for admin worker (Better Auth)
+    console.log('\n📝 Setting up SESSIONS namespace (admin worker)...');
+    await setupNamespace('SESSIONS', adminDir);
 
-    // Check if KV namespace is already configured
-    if (currentConfig.includes('id = "YOUR_KV_NAMESPACE_ID"') ||
-        !currentConfig.includes('[[kv_namespaces]]')) {
+    // Setup WEBHOOK_CACHE namespace for both workers
+    console.log('\n📝 Setting up WEBHOOK_CACHE namespace...');
 
-      console.log('\n📝 KV namespace not configured, creating...');
+    // Create namespace once (from admin worker)
+    const webhookCacheId = await setupNamespace('WEBHOOK_CACHE', adminDir);
 
-      // Create KV namespace
-      console.log('   Creating SESSIONS namespace...');
-      const { stdout, stderr } = await runCommand(
-        'wrangler',
-        ['kv', 'namespace', 'create', 'SESSIONS'],
-        { cwd: adminDir }
-      );
-
-      // Extract namespace ID from output
-      const output = stdout + stderr;
-      const namespaceId = extractNamespaceId(output);
-
-      if (!namespaceId) {
-        throw new Error('Could not extract namespace ID from wrangler output');
-      }
-
-      console.log(`   ✅ Created KV namespace: ${namespaceId}`);
-
-      // Update wrangler.toml
-      console.log('\n📝 Updating wrangler.toml...');
-      updateWranglerToml(namespaceId);
-      console.log('   ✅ wrangler.toml updated with namespace ID');
-
-    } else {
-      console.log('\n✅ KV namespace already configured');
-
-      // Extract existing ID for verification
-      const match = currentConfig.match(/binding\s*=\s*"SESSIONS"[\s\S]*?id\s*=\s*"([^"]+)"/);
-      if (match) {
-        console.log(`   Namespace ID: ${match[1]}`);
-      }
-    }
+    // Update webhook worker wrangler.toml with same namespace ID
+    console.log('   Updating webhook worker wrangler.toml...');
+    const webhookWranglerPath = join(webhookDir, 'wrangler.toml');
+    updateWranglerToml(webhookWranglerPath, 'WEBHOOK_CACHE', webhookCacheId);
+    console.log('   ✅ Updated webhook-worker/wrangler.toml');
 
     console.log('\n═'.repeat(60));
-    console.log('✅ KV namespace setup complete!');
+    console.log('✅ All KV namespaces configured!');
+    console.log('\n📋 Summary:');
+    console.log('   • SESSIONS: Used by admin worker for Better Auth');
+    console.log('   • WEBHOOK_CACHE: Shared by admin + webhook workers for performance');
 
   } catch (error) {
     console.error('\n❌ KV namespace setup failed:', error.message);

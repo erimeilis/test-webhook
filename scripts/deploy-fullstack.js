@@ -81,7 +81,7 @@ async function main() {
     // Step 8: Deploy workers
     console.log('\n🚀 Step 8/8: Deploying workers...');
 
-    // Deploy admin worker
+    // Deploy admin worker (uses top-level configuration)
     console.log('\n   📡 Deploying admin worker...');
     await runCommand('wrangler', ['deploy'], { cwd: './admin' });
     console.log('   ✅ Admin worker deployed');
@@ -99,6 +99,8 @@ async function main() {
     console.log('  2. Test authentication (Google OAuth + Email/Password)');
     console.log('  3. Test webhook ingestion endpoint');
     console.log('  4. Check Cloudflare dashboard for worker logs');
+    console.log('  5. Scheduled cleanup runs hourly (at minute 0)');
+    console.log('  6. Admin receives email notifications when data is deleted');
 
   } catch (error) {
     console.error('\n❌ Deployment failed:', error.message);

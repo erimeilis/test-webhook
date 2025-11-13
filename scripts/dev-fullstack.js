@@ -19,8 +19,35 @@ const PORTS = {
   webhook: 5174
 };
 
+// Setup KV namespaces for development
+async function setupKV() {
+  return new Promise((resolve, reject) => {
+    console.log('🗄️  Setting up KV namespaces for development...');
+
+    const setupProcess = spawn('node', ['scripts/setup-kv.js'], {
+      stdio: 'inherit',
+      shell: true
+    });
+
+    setupProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log('✅ KV namespaces ready\n');
+        resolve();
+      } else {
+        console.warn('⚠️  KV setup failed, continuing anyway (may work with existing config)\n');
+        resolve(); // Continue even if setup fails (might already be configured)
+      }
+    });
+
+    setupProcess.on('error', (error) => {
+      console.warn('⚠️  KV setup error:', error.message);
+      resolve(); // Continue anyway
+    });
+  });
+}
+
 // Kill any existing processes on our ports
-function killExistingProcesses() {
+async function killExistingProcesses() {
   console.log('🔄 Checking for existing processes on ports 5173 and 5174...');
 
   const killPort = (port, name) => {
@@ -53,7 +80,12 @@ function killExistingProcesses() {
   killPort(PORTS.webhook, 'webhook worker');
 
   // Wait a moment for processes to die
-  setTimeout(startServices, 1500);
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  // Setup KV namespaces before starting services
+  await setupKV();
+
+  startServices();
 }
 
 // Start both services

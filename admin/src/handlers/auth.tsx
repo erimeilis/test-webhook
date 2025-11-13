@@ -222,37 +222,6 @@ export async function handleVerifyEmailPage(c: AppContext) {
   )
 }
 
-// Test email page
-export async function handleTestEmailPage(c: AppContext) {
-  return c.render(
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md p-6 sm:p-8 bg-card rounded-lg shadow-lg">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-center">Test Email</h1>
-
-        <form id="test-email-form" className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
-              Email Address
-            </label>
-            <Input
-              type="email"
-              id="email"
-              name="email"
-              required
-            />
-          </div>
-
-          <Button type="submit" color="primary" modifier="wide" size="lg">
-            Send Test Email
-          </Button>
-        </form>
-
-        <div id="result" className="mt-4"></div>
-      </div>
-    </div>
-  )
-}
-
 // Password reset form page
 // Note: OAuth users can use this same flow since auto-generation hook creates credential accounts
 export async function handleResetPasswordPage(c: AppContext) {

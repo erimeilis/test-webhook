@@ -588,15 +588,21 @@ function initializeTables() {
       searchInput.value = params.search
     }
 
-    // Sync method filter buttons
-    const methodButtons = container.querySelectorAll('[data-filter-method]')
-    methodButtons.forEach((btn) => {
-      const method = btn.getAttribute('data-filter-method')
-      if (method === params.method || (method === 'all' && !params.method)) {
-        btn.classList.add('bg-primary', 'text-primary-foreground')
-        btn.classList.remove('hover:bg-muted')
-      }
-    })
+    // Sync method filter toggle switch
+    const toggleSwitch = container.querySelector('[data-toggle-switch="method-filter"]')
+    if (toggleSwitch) {
+      const activeValue = params.method || 'all'
+      const indicator = toggleSwitch.querySelector('[data-toggle-indicator]') as HTMLElement
+      const buttons = toggleSwitch.querySelectorAll('[data-toggle-value]')
+
+      buttons.forEach((btn, index) => {
+        const value = btn.getAttribute('data-toggle-value')
+        if (value === activeValue && indicator) {
+          // Move indicator to active button
+          indicator.style.transform = `translateX(calc(${index * 100}% + 0.25rem))`
+        }
+      })
+    }
 
     // Sync date filter
     if (params.dateStart && params.dateEnd) {
@@ -687,24 +693,26 @@ function setupTableEventListeners(tableId: string, container: HTMLElement) {
     })
   })
 
-  // Method filter buttons
-  const methodButtons = container.querySelectorAll('[data-filter-method]')
-  methodButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const method = button.getAttribute('data-filter-method')
+  // Method filter toggle switch
+  const toggleSwitch = container.querySelector('[data-toggle-switch="method-filter"]')
+  if (toggleSwitch) {
+    const indicator = toggleSwitch.querySelector('[data-toggle-indicator]') as HTMLElement
+    const buttons = toggleSwitch.querySelectorAll('[data-toggle-value]')
 
-      // Update button styles
-      methodButtons.forEach((btn) => {
-        btn.classList.remove('bg-primary', 'text-primary-foreground')
-        btn.classList.add('hover:bg-muted')
+    buttons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        const value = button.getAttribute('data-toggle-value')
+
+        // Move indicator to clicked button
+        if (indicator) {
+          indicator.style.transform = `translateX(calc(${index * 100}% + 0.25rem))`
+        }
+
+        // Update URL
+        updateTableParams(tableId, { method: value === 'all' ? null : value, page: 1 })
       })
-      button.classList.add('bg-primary', 'text-primary-foreground')
-      button.classList.remove('hover:bg-muted')
-
-      // Update URL
-      updateTableParams(tableId, { method: method === 'all' ? null : method, page: 1 })
     })
-  })
+  }
 
   // Date range filter toggle
   const dateToggle = container.querySelector('[data-filter-toggle="date-range"]')

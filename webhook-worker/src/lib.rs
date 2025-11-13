@@ -68,28 +68,59 @@ async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let received_at = (Date::now().as_millis() / 1000) as i64; // Convert to Unix seconds
     let data_id = uuid::Uuid::new_v4().to_string();
 
-    // Get D1 database
+    // Get KV cache and D1 database
+    let kv = env.kv("WEBHOOK_CACHE")?;
     let db = env.d1("DB")?;
 
-    // First, lookup webhook by UUID to get webhook ID
-    let webhook_statement = db.prepare("SELECT id FROM webhooks WHERE uuid = ?1");
-    let webhook_query = webhook_statement.bind(&[JsValue::from_str(uuid)])?;
-    let webhook_result = webhook_query.first::<WebhookRow>(None).await?;
+    // Step 1: Lookup webhook ID (KV first, D1 fallback)
+    let cache_key = format!("webhook:uuid:{}", uuid);
+    let webhook_id: String;
 
-    if let Some(webhook_row) = webhook_result {
-        // Insert webhook data
-        let insert_statement = db.prepare("INSERT INTO webhook_data (id, webhook_id, method, headers, data, size_bytes, received_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)");
-        let insert_query = insert_statement.bind(&[
-            JsValue::from_str(&data_id),
-            JsValue::from_str(&webhook_row.id),
-            JsValue::from_str(&method),
-            JsValue::from_str(&_headers_json),
-            JsValue::from_str(&data_json),
-            JsValue::from_f64(size_bytes as f64),
-            JsValue::from_f64(received_at as f64),
-        ])?;
-        insert_query.run().await?;
+    // Try KV cache first
+    match kv.get(&cache_key).text().await? {
+        Some(cached_id) => {
+            // Cache hit! Use cached webhook ID
+            webhook_id = cached_id;
+            console_log!("✅ KV cache hit for UUID: {}", uuid);
+        }
+        None => {
+            // Cache miss - query D1
+            console_log!("❌ KV cache miss for UUID: {}, querying D1", uuid);
+
+            let webhook_statement = db.prepare("SELECT id FROM webhooks WHERE uuid = ?1");
+            let webhook_query = webhook_statement.bind(&[JsValue::from_str(uuid)])?;
+            let webhook_result = webhook_query.first::<WebhookRow>(None).await?;
+
+            match webhook_result {
+                Some(webhook_row) => {
+                    webhook_id = webhook_row.id.clone();
+
+                    // Cache the result for future requests (1 hour TTL)
+                    match kv.put(&cache_key, &webhook_id)?.expiration_ttl(3600).execute().await {
+                        Ok(_) => console_log!("📝 Cached webhook ID in KV: {}", webhook_id),
+                        Err(e) => console_error!("⚠️  Failed to cache webhook ID: {:?}", e),
+                    }
+                }
+                None => {
+                    // Webhook not found
+                    return Response::error("Webhook not found", 404);
+                }
+            }
+        }
     }
+
+    // Step 2: Insert webhook data to D1
+    let insert_statement = db.prepare("INSERT INTO webhook_data (id, webhook_id, method, headers, data, size_bytes, received_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)");
+    let insert_query = insert_statement.bind(&[
+        JsValue::from_str(&data_id),
+        JsValue::from_str(&webhook_id),
+        JsValue::from_str(&method),
+        JsValue::from_str(&_headers_json),
+        JsValue::from_str(&data_json),
+        JsValue::from_f64(size_bytes as f64),
+        JsValue::from_f64(received_at as f64),
+    ])?;
+    insert_query.run().await?;
 
     // Success response
     let mut response = Response::from_json(&serde_json::json!({

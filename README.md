@@ -230,8 +230,8 @@ npm run db:migrate   # Reapply migrations
 ### 📊 Data Management
 - ✅ Real-time data viewer
 - ✅ Sort and filter by date, method, headers
-- ✅ Data retention (1 month or 10MB per user)
-- ✅ Scheduled cleanup jobs
+- ✅ Data retention (1 day or 10MB per user)
+- ✅ Scheduled cleanup jobs (see [Log Retention Guide](LOG_RETENTION.md))
 
 ### 👥 Admin Features
 - ✅ User statistics dashboard

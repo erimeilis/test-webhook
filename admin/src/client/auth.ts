@@ -15,7 +15,6 @@ if (document.readyState === 'loading') {
 function initAuth() {
   setupAuthForms()
   setupGoogleOAuth()
-  setupTestEmailForm()
   setupResetPasswordForm()
   setupNavigationButtons()
 }
@@ -324,64 +323,6 @@ async function handleGoogleOAuth(e: Event) {
   } catch (error) {
     console.error('OAuth error:', error)
     alert('Network error. Please try again.')
-  }
-}
-
-// ========================================
-// TEST EMAIL
-// ========================================
-
-function setupTestEmailForm() {
-  const testForm = document.getElementById('test-email-form') as HTMLFormElement
-  if (testForm) {
-    testForm.addEventListener('submit', handleTestEmailSubmit)
-  }
-}
-
-async function handleTestEmailSubmit(e: Event) {
-  e.preventDefault()
-
-  const form = e.target as HTMLFormElement
-  const formData = new FormData(form)
-  const email = formData.get('email') as string
-  const resultDiv = document.getElementById('result')
-  const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement
-
-  if (!resultDiv) return
-
-  // Disable button and show loading
-  submitButton.disabled = true
-  submitButton.textContent = 'Sending...'
-
-  resultDiv.className = 'mt-4 p-3 bg-info/10 text-info rounded-lg text-sm'
-  resultDiv.textContent = 'Sending test email...'
-
-  try {
-    const response = await fetch('/api/test-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    })
-
-    const data = await response.json() as { message?: string; error?: string }
-
-    if (response.ok) {
-      resultDiv.className = 'mt-4 p-3 bg-success/10 text-success rounded-lg text-sm'
-      resultDiv.textContent = data.message || 'Test email sent successfully!'
-    } else {
-      resultDiv.className = 'mt-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm'
-      resultDiv.textContent = data.error || 'Failed to send test email'
-    }
-  } catch (error) {
-    console.error('Test email error:', error)
-    resultDiv.className = 'mt-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm'
-    resultDiv.textContent = 'Network error. Please try again.'
-  } finally {
-    // Re-enable button
-    submitButton.disabled = false
-    submitButton.textContent = 'Send Test Email'
   }
 }
 

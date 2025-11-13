@@ -16,6 +16,12 @@ binding = "DB"
 database_name = "webhook-db"
 database_id = "4b560545-0e26-4d08-9058-b72cebe26514" # Replace after creating D1 database
 
+# KV namespace for webhook cache (shared with admin worker)
+# Populated automatically by setup-kv.js script
+[[kv_namespaces]]
+binding = "WEBHOOK_CACHE"
+id = "3bcb003437494c9cbea59a6a37bb9eec"
+
 # Environment variables
 [vars]
 ENVIRONMENT = "production"

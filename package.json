@@ -1,6 +1,6 @@
 {
   "name": "test-webhook",
-  "version": "0.4.0",
+  "version": "1.0.1",
   "description": "High-performance webhook ingestion and management system built on Cloudflare Workers",
   "private": true,
   "type": "module",
@@ -42,6 +42,6 @@
   "author": "Eri <eri@redshoes.pro>",
   "license": "MIT",
   "devDependencies": {
-    "wrangler": "^4.46.0"
+    "wrangler": "^4.47.0"
   }
 }

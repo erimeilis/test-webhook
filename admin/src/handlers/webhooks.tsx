@@ -68,6 +68,16 @@ export async function createWebhook(c: AppContext) {
       createdAt: now,
     })
 
+    // Cache webhook ID in KV for fast lookups (1 hour TTL)
+    const cacheKey = `webhook:uuid:${webhookUuid}`
+    try {
+      await c.env.WEBHOOK_CACHE.put(cacheKey, webhookId, { expirationTtl: 3600 })
+      console.log(`📝 Cached webhook ID in KV: ${webhookId}`)
+    } catch (error) {
+      console.error('⚠️  Failed to cache webhook ID:', error)
+      // Continue even if caching fails
+    }
+
     // Fetch the created webhook
     const created = await db
       .select()
@@ -110,7 +120,18 @@ export async function deleteWebhook(c: AppContext) {
       return c.json({ error: 'Webhook not found' }, 404)
     }
 
+    // Delete from database (cascades to webhook_data via foreign key)
     await db.delete(webhooks).where(eq(webhooks.id, webhookId))
+
+    // Invalidate KV cache
+    const cacheKey = `webhook:uuid:${webhook.uuid}`
+    try {
+      await c.env.WEBHOOK_CACHE.delete(cacheKey)
+      console.log(`🗑️  Deleted webhook cache: ${webhook.uuid}`)
+    } catch (error) {
+      console.error('⚠️  Failed to delete webhook cache:', error)
+      // Continue even if cache deletion fails
+    }
 
     return c.json({ success: true, message: 'Webhook deleted' })
   } catch (error) {

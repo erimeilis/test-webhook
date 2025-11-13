@@ -1,6 +1,6 @@
 {
   "name": "webhook-admin",
-  "version": "0.3.0",
+  "version": "1.0.1",
   "description": "Webhook system admin panel built with Hono and React",
   "private": true,
   "type": "module",
@@ -14,6 +14,10 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply webhook-db --local --persist-to ../.wrangler-shared",
     "db:reset": "wrangler dev scripts/reset-db.ts --local --test-scheduled --persist-to ../.wrangler-shared",
@@ -45,21 +49,28 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250823.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.3.1",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.8",
     "@typescript-eslint/eslint-plugin": "^8.41.0",
     "@typescript-eslint/parser": "^8.41.0",
+    "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.21",
     "drizzle-kit": "^0.30.3",
     "esbuild": "^0.25.9",
     "eslint": "^9.34.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "happy-dom": "^20.0.10",
+    "jsdom": "^27.0.1",
     "postcss": "^8.5.6",
     "postcss-cli": "^11.0.1",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.3",
-    "wrangler": "^4.45.0"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.47.0"
   }
 }

@@ -23,6 +23,12 @@ migrations_dir = "../migrations"
 binding = "SESSIONS"
 id = "1d67d3e0047d4f29a42525d2406fde76" # Replace after creating KV namespace
 
+# KV namespace for webhook cache (shared with webhook worker)
+# Populated automatically by setup-kv.js script
+[[kv_namespaces]]
+binding = "WEBHOOK_CACHE"
+id = "3bcb003437494c9cbea59a6a37bb9eec"
+
 # Environment variables
 [vars]
 ENVIRONMENT = "development"
@@ -37,7 +43,11 @@ vars = { ENVIRONMENT = "development" }
 name = "webhook-admin-prod"
 vars = { ENVIRONMENT = "production" }
 
-# Secrets (set via .dev.vars and uploaded automatically with npm run secrets:upload)
+# Scheduled cleanup: Daily at midnight UTC (0:00)
+[triggers]
+crons = ["0 0 * * *"]
+
+# Secrets (set via .env and uploaded automatically with npm run secrets:upload)
 # - BASE_URL (production URL for Better Auth OAuth callbacks)
 # - GOOGLE_CLIENT_ID
 # - GOOGLE_CLIENT_SECRET
