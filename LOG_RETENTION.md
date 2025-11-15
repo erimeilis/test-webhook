@@ -269,7 +269,7 @@ wrangler tail webhook-admin-prod
    ↓
 5. Delete old webhook_data records
    ↓
-6. Send hourly email to ADMIN_EMAIL
+6. Send daily email to ADMIN_EMAIL
    ↓
 7. Return cleanup results
 ```

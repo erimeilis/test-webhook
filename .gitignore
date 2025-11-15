@@ -84,3 +84,4 @@ webhook-worker/Cargo.lock
 # Load testing
 .webhook-uuid
 load-test-results/
+/claudedocs/
