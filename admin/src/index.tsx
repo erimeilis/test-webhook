@@ -19,6 +19,7 @@ import { shareWebhook, listCollaborators, removeCollaborator } from '@/handlers/
 import { listUsers, impersonateUser, stopImpersonation } from '@/handlers/admin'
 import { cleanupOldData } from '@/handlers/cleanup'
 import { authMiddleware } from '@/middleware/auth'
+import { servicesMiddleware } from '@/middleware/services'
 
 // Initialize Hono app
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
@@ -51,6 +52,9 @@ app.use('*', reactRenderer(({ children }) => {
     </html>
   )
 }))
+
+// Inject services into context for all routes
+app.use('*', servicesMiddleware)
 
 // Note: OAuth users can use Better Auth's built-in reset-password flow
 // The auto-generation hook creates a credential account with a random password,
