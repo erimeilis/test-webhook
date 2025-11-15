@@ -137,7 +137,7 @@ export async function cleanupOldData(env: Bindings): Promise<{
           `).bind(user.id, approxRecordsToDelete).all()
 
           if (bulkDeleted.results && bulkDeleted.results.length > 0) {
-            const deletedSize = bulkDeleted.results.reduce((sum: number, r: any) => sum + r.size_bytes, 0)
+            const deletedSize = bulkDeleted.results.reduce((sum: number, r: { size_bytes: number }) => sum + r.size_bytes, 0)
             remainingStorage -= deletedSize
             batchDeletedCount += bulkDeleted.results.length
 
@@ -162,7 +162,7 @@ export async function cleanupOldData(env: Bindings): Promise<{
 
           if (!fineTuneDeleted.results || fineTuneDeleted.results.length === 0) break
 
-          const deletedSize = fineTuneDeleted.results.reduce((sum: number, r: any) => sum + r.size_bytes, 0)
+          const deletedSize = fineTuneDeleted.results.reduce((sum: number, r: { size_bytes: number }) => sum + r.size_bytes, 0)
           remainingStorage -= deletedSize
           batchDeletedCount += fineTuneDeleted.results.length
 
