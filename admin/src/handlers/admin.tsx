@@ -1,84 +1,44 @@
 /**
- * Admin API Handlers
- * Admin-only endpoints for user management and statistics
+ * Admin API Handlers (Refactored)
+ * Admin-only endpoints for user management using service layer
  */
 
 import type { Context } from 'hono'
 import type { Bindings, Variables } from '@/types/hono'
-import { drizzle } from 'drizzle-orm/d1'
-import { user, webhooks, webhookData } from '@/lib/db-schema'
-import { eq, sql, desc } from 'drizzle-orm'
+import { UnauthorizedError } from '@/lib/errors'
 
 type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>
 
-// Get all users with statistics
+/**
+ * Get all users with statistics
+ * GET /api/admin/users
+ */
 export async function listUsers(c: AppContext) {
   const isAdmin = c.get('isAdmin')
+  const userId = c.get('userId')
+  const services = c.get('services')
 
-  if (!isAdmin) {
+  if (!isAdmin || !userId) {
     return c.json({ error: 'Unauthorized' }, 403)
   }
 
   try {
-    const db = drizzle(c.env.DB)
-
-    // Get all users with webhook counts and total bytes
-    const users = await db
-      .select({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        emailVerified: user.emailVerified,
-        createdAt: user.createdAt,
-      })
-      .from(user)
-      .orderBy(desc(user.createdAt))
-      .all()
-
-    // Get webhook counts for each user
-    const webhookCounts = await db
-      .select({
-        userId: webhooks.userId,
-        count: sql<number>`count(*)`.as('count'),
-      })
-      .from(webhooks)
-      .groupBy(webhooks.userId)
-      .all()
-
-    // Get request counts and total bytes for each user
-    const requestStats = await db
-      .select({
-        userId: webhooks.userId,
-        requestCount: sql<number>`count(${webhookData.id})`.as('requestCount'),
-        totalBytes: sql<number>`sum(${webhookData.sizeBytes})`.as('totalBytes'),
-      })
-      .from(webhooks)
-      .leftJoin(webhookData, eq(webhooks.id, webhookData.webhookId))
-      .groupBy(webhooks.userId)
-      .all()
-
-    // Combine all stats
-    const usersWithStats = users.map(u => {
-      const webhookCount = webhookCounts.find(wc => wc.userId === u.id)?.count || 0
-      const stats = requestStats.find(rs => rs.userId === u.id)
-
-      return {
-        ...u,
-        webhookCount,
-        requestCount: stats?.requestCount || 0,
-        totalBytes: stats?.totalBytes || 0,
-      }
-    })
-
+    const usersWithStats = await services.users.getAllUsersWithStats(userId)
     return c.json({ users: usersWithStats })
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return c.json({ error: error.message }, error.statusCode as 403)
+    }
     console.error('Error listing users:', error)
     return c.json({ error: 'Failed to list users' }, 500)
   }
 }
 
-// Impersonate a user (Better Auth admin plugin handles this)
+/**
+ * Impersonate a user
+ * POST /api/admin/impersonate
+ * Note: Better Auth admin plugin handles actual impersonation logic
+ */
 export async function impersonateUser(c: AppContext) {
   const isAdmin = c.get('isAdmin')
 
@@ -94,7 +54,7 @@ export async function impersonateUser(c: AppContext) {
     }
 
     // Better Auth admin plugin provides impersonation via /api/auth/admin/impersonate
-    // This endpoint just validates the admin status
+    // This endpoint validates admin status before delegating to Better Auth
     return c.json({ success: true, userId })
   } catch (error) {
     console.error('Error impersonating user:', error)
@@ -102,7 +62,11 @@ export async function impersonateUser(c: AppContext) {
   }
 }
 
-// Stop impersonation (Better Auth admin plugin handles this)
+/**
+ * Stop impersonation
+ * POST /api/admin/stop-impersonation
+ * Note: Better Auth admin plugin handles actual stop impersonation logic
+ */
 export async function stopImpersonation(c: AppContext) {
   const isAdmin = c.get('isAdmin')
 
@@ -111,5 +75,6 @@ export async function stopImpersonation(c: AppContext) {
   }
 
   // Better Auth admin plugin provides stop impersonation via /api/auth/admin/stop-impersonation
+  // This endpoint validates admin status
   return c.json({ success: true })
 }

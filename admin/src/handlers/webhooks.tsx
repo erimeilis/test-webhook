@@ -1,44 +1,51 @@
 /**
- * Webhook API Handlers
- * CRUD operations for webhooks
+ * Webhook API Handlers (Refactored)
+ * CRUD operations for webhooks using service layer
  */
 
 import type { Context } from 'hono'
 import type { Bindings, Variables } from '@/types/hono'
-import { drizzle } from 'drizzle-orm/d1'
-import { webhooks, webhookData } from '@/lib/db-schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { NotFoundError, UnauthorizedError, ValidationError } from '@/lib/errors'
 
 type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>
 
-// List webhooks for current user
+/**
+ * List webhooks for current user
+ * GET /api/webhooks
+ */
 export async function listWebhooks(c: AppContext) {
   const user = c.get('user')
+  const services = c.get('services')
 
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
 
   try {
-    const db = drizzle(c.env.DB)
+    const { owned, shared } = await services.webhooks.getUserWebhooks(user.id, user.email)
 
-    const userWebhooks = await db
-      .select()
-      .from(webhooks)
-      .where(eq(webhooks.userId, user.id))
-      .orderBy(webhooks.createdAt)
-      .all()
-
-    return c.json({ webhooks: userWebhooks })
+    return c.json({
+      webhooks: owned,
+      shared: shared.map(s => ({
+        ...s.webhook,
+        role: s.role,
+        invitedAt: s.invitedAt,
+        acceptedAt: s.acceptedAt
+      }))
+    })
   } catch (error) {
     console.error('Error listing webhooks:', error)
     return c.json({ error: 'Failed to list webhooks' }, 500)
   }
 }
 
-// Create new webhook
+/**
+ * Create new webhook
+ * POST /api/webhooks
+ */
 export async function createWebhook(c: AppContext) {
   const user = c.get('user')
+  const services = c.get('services')
 
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -46,55 +53,35 @@ export async function createWebhook(c: AppContext) {
 
   try {
     const body = await c.req.json()
-    const { name, tags } = body
+    const webhook = await services.webhooks.createWebhook(user.id, body)
 
-    if (!name || name.trim().length === 0) {
-      return c.json({ error: 'Name is required' }, 400)
-    }
-
-    const db = drizzle(c.env.DB)
-
-    // Generate webhook ID and UUID
-    const webhookId = crypto.randomUUID()
-    const webhookUuid = crypto.randomUUID()
-    const now = new Date()
-
-    await db.insert(webhooks).values({
-      id: webhookId,
-      userId: user.id,
-      uuid: webhookUuid,
-      name: name.trim(),
-      tags: tags || null,
-      createdAt: now,
-    })
-
-    // Cache webhook ID in KV for fast lookups (1 hour TTL)
-    const cacheKey = `webhook:uuid:${webhookUuid}`
+    // Cache webhook UUID → ID mapping in KV (1 hour TTL)
+    const cacheKey = `webhook:uuid:${webhook.uuid}`
     try {
-      await c.env.WEBHOOK_CACHE.put(cacheKey, webhookId, { expirationTtl: 3600 })
-      console.log(`📝 Cached webhook ID in KV: ${webhookId}`)
+      await c.env.WEBHOOK_CACHE.put(cacheKey, webhook.id, { expirationTtl: 3600 })
+      console.log(`📝 Cached webhook ID in KV: ${webhook.id}`)
     } catch (error) {
       console.error('⚠️  Failed to cache webhook ID:', error)
       // Continue even if caching fails
     }
 
-    // Fetch the created webhook
-    const created = await db
-      .select()
-      .from(webhooks)
-      .where(eq(webhooks.id, webhookId))
-      .get()
-
-    return c.json({ webhook: created }, 201)
+    return c.json({ webhook }, 201)
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return c.json({ error: error.message }, 400)
+    }
     console.error('Error creating webhook:', error)
     return c.json({ error: 'Failed to create webhook' }, 500)
   }
 }
 
-// Delete webhook
+/**
+ * Delete webhook
+ * DELETE /api/webhooks/:id
+ */
 export async function deleteWebhook(c: AppContext) {
   const user = c.get('user')
+  const services = c.get('services')
 
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -107,21 +94,11 @@ export async function deleteWebhook(c: AppContext) {
       return c.json({ error: 'Webhook ID is required' }, 400)
     }
 
-    const db = drizzle(c.env.DB)
+    // Get webhook to retrieve UUID before deletion
+    const webhook = await services.webhooks.getWebhook(webhookId, user.id)
 
-    // Verify webhook belongs to user before deleting
-    const webhook = await db
-      .select()
-      .from(webhooks)
-      .where(and(eq(webhooks.id, webhookId), eq(webhooks.userId, user.id)))
-      .get()
-
-    if (!webhook) {
-      return c.json({ error: 'Webhook not found' }, 404)
-    }
-
-    // Delete from database (cascades to webhook_data via foreign key)
-    await db.delete(webhooks).where(eq(webhooks.id, webhookId))
+    // Delete webhook (cascades to shares and data)
+    await services.webhooks.deleteWebhook(webhookId, user.id)
 
     // Invalidate KV cache
     const cacheKey = `webhook:uuid:${webhook.uuid}`
@@ -135,14 +112,21 @@ export async function deleteWebhook(c: AppContext) {
 
     return c.json({ success: true, message: 'Webhook deleted' })
   } catch (error) {
+    if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+      return c.json({ error: error.message }, error.statusCode as 404 | 403)
+    }
     console.error('Error deleting webhook:', error)
     return c.json({ error: 'Failed to delete webhook' }, 500)
   }
 }
 
-// Get webhook requests/data
+/**
+ * Get webhook requests/data
+ * GET /api/webhooks/:id/data
+ */
 export async function getWebhookData(c: AppContext) {
   const user = c.get('user')
+  const services = c.get('services')
 
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -155,38 +139,26 @@ export async function getWebhookData(c: AppContext) {
       return c.json({ error: 'Webhook ID is required' }, 400)
     }
 
-    const db = drizzle(c.env.DB)
-
-    // Verify webhook belongs to user
-    const webhook = await db
-      .select()
-      .from(webhooks)
-      .where(and(eq(webhooks.id, webhookId), eq(webhooks.userId, user.id)))
-      .get()
-
-    if (!webhook) {
-      return c.json({ error: 'Webhook not found' }, 404)
-    }
-
-    // Fetch webhook data (recent 50 requests)
-    const requests = await db
-      .select()
-      .from(webhookData)
-      .where(eq(webhookData.webhookId, webhookId))
-      .orderBy(desc(webhookData.receivedAt))
-      .limit(50)
-      .all()
+    // Fetch recent webhook data (50 requests)
+    const requests = await services.webhookData.getRecentWebhookData(webhookId, user.id, 50)
 
     return c.json({ requests })
   } catch (error) {
+    if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+      return c.json({ error: error.message }, error.statusCode as 404 | 403)
+    }
     console.error('Error fetching webhook data:', error)
     return c.json({ error: 'Failed to fetch webhook data' }, 500)
   }
 }
 
-// Update webhook (name and tags)
+/**
+ * Update webhook (name and tags)
+ * PATCH /api/webhooks/:id
+ */
 export async function updateWebhook(c: AppContext) {
   const user = c.get('user')
+  const services = c.get('services')
 
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -200,43 +172,16 @@ export async function updateWebhook(c: AppContext) {
     }
 
     const body = await c.req.json()
-    const { name, tags } = body
-
-    if (!name || name.trim().length === 0) {
-      return c.json({ error: 'Name is required' }, 400)
-    }
-
-    const db = drizzle(c.env.DB)
-
-    // Verify webhook belongs to user
-    const webhook = await db
-      .select()
-      .from(webhooks)
-      .where(and(eq(webhooks.id, webhookId), eq(webhooks.userId, user.id)))
-      .get()
-
-    if (!webhook) {
-      return c.json({ error: 'Webhook not found' }, 404)
-    }
-
-    // Update webhook
-    await db
-      .update(webhooks)
-      .set({
-        name: name.trim(),
-        tags: tags || null,
-      })
-      .where(eq(webhooks.id, webhookId))
-
-    // Fetch updated webhook
-    const updated = await db
-      .select()
-      .from(webhooks)
-      .where(eq(webhooks.id, webhookId))
-      .get()
+    const updated = await services.webhooks.updateWebhook(webhookId, user.id, body)
 
     return c.json({ webhook: updated })
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return c.json({ error: error.message }, 400)
+    }
+    if (error instanceof NotFoundError || error instanceof UnauthorizedError) {
+      return c.json({ error: error.message }, error.statusCode as 404 | 403)
+    }
     console.error('Error updating webhook:', error)
     return c.json({ error: 'Failed to update webhook' }, 500)
   }
