@@ -2,6 +2,8 @@
  * Hono Types
  */
 
+import type { Services } from '@/services'
+
 export type Bindings = {
   DB: D1Database
   SESSIONS: KVNamespace
@@ -26,8 +28,10 @@ export type Variables = {
     name?: string
     role?: string
   }
+  userId?: string
   isAdmin?: boolean
   isImpersonating?: boolean
+  services: Services
 }
 
 export type Env = {
