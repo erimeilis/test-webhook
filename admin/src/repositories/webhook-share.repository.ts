@@ -111,7 +111,7 @@ export class WebhookShareRepository {
   /**
    * Create a new share
    */
-  async create(data: NewWebhookShare): Promise<WebhookShare> {
+  async create(data: Omit<NewWebhookShare, 'id' | 'invitedAt'>): Promise<WebhookShare> {
     const id = crypto.randomUUID()
     const share: NewWebhookShare = {
       ...data,

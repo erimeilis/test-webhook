@@ -66,7 +66,7 @@ export class WebhookRepository {
   /**
    * Create a new webhook
    */
-  async create(data: NewWebhook): Promise<Webhook> {
+  async create(data: Omit<NewWebhook, 'id' | 'createdAt'>): Promise<Webhook> {
     const id = crypto.randomUUID()
     const webhook: NewWebhook = {
       ...data,

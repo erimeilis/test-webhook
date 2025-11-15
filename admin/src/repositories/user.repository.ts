@@ -123,7 +123,7 @@ export class UserRepository {
   /**
    * Create a new user
    */
-  async create(data: NewUser): Promise<User> {
+  async create(data: Omit<NewUser, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
     const id = crypto.randomUUID()
     const newUser: NewUser = {
       ...data,
