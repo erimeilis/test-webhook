@@ -69,10 +69,66 @@ function updateTableParams(tableId: string, updates: Partial<ReturnType<typeof g
     params.delete(`${tableId}_date_end`)
   }
 
-  // Navigate to new URL with full page reload (server-side filtering)
+  // Navigate to new URL without page reload (AJAX-based filtering)
   const newUrl = `${window.location.pathname}?${params.toString()}`
-  console.log(`🔗 Navigating to: ${newUrl}`)
-  window.location.href = newUrl
+  console.log(`🔗 Updating table via AJAX: ${newUrl}`)
+
+  // Update URL without reload using History API
+  window.history.pushState({}, '', newUrl)
+
+  // Fetch new table content via AJAX
+  fetchTableContent(tableId, newUrl)
+}
+
+async function fetchTableContent(tableId: string, url: string) {
+  const tableContainer = document.querySelector(`[data-table-container="${tableId}"]`) as HTMLElement
+  if (!tableContainer) return
+
+  // Show loading state
+  const tableBody = tableContainer.querySelector('[data-table-body]')
+  if (tableBody) {
+    tableBody.classList.add('opacity-50', 'pointer-events-none')
+  }
+
+  try {
+    // Fetch the updated page
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'text/html',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const html = await response.text()
+
+    // Parse the HTML to extract the new table
+    // eslint-disable-next-line no-undef
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const newTableContainer = doc.querySelector(`[data-table-container="${tableId}"]`)
+
+    if (newTableContainer && tableContainer) {
+      // Replace the entire table container with the new one
+      tableContainer.innerHTML = newTableContainer.innerHTML
+
+      // Reinitialize event listeners for the updated table
+      setupTableEventListeners(tableId, tableContainer)
+
+      console.log('✅ Table updated successfully')
+    }
+  } catch (error) {
+    console.error('❌ Failed to fetch table content:', error)
+    // Fall back to full page reload on error
+    window.location.href = url
+  } finally {
+    // Remove loading state
+    if (tableBody) {
+      tableBody.classList.remove('opacity-50', 'pointer-events-none')
+    }
+  }
 }
 
 // ========================================
@@ -97,6 +153,16 @@ function init() {
   const tag = urlParams.get('tag')
   if (tag) {
     applyTagFilter(tag)
+  }
+
+  // Restore scroll position after filter reload
+  const savedScrollPosition = sessionStorage.getItem('filterScrollPosition')
+  if (savedScrollPosition) {
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: Number(savedScrollPosition), behavior: 'instant' })
+      sessionStorage.removeItem('filterScrollPosition')
+    })
   }
 
   // Browser back/forward will trigger full page reload automatically
@@ -160,6 +226,10 @@ function setupEventListeners() {
       case 'toggle-user-menu':
         handleToggleUserMenu()
         break
+
+      case 'toggle-date-range':
+        handleToggleDateRange()
+        break
     }
   })
 
@@ -222,6 +292,14 @@ function setupEventListeners() {
           menu.classList.add('hidden')
         }
       })
+    }
+
+    // Close date range dropdown if clicking outside
+    if (!target.closest('[data-action="toggle-date-range"]') && !target.closest('[data-filter-dropdown="date-range"]')) {
+      const dropdown = document.querySelector('[data-filter-dropdown="date-range"]') as HTMLElement
+      if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden')
+      }
     }
   })
 }
@@ -513,7 +591,8 @@ function handleFilterByTag(tag: string) {
 }
 
 function applyTagFilter(tag: string) {
-  const webhookCards = Array.from(document.querySelectorAll('[data-webhook-id]')) as HTMLElement[]
+  // Select only the webhook card containers (div with data-webhook-tags), not the buttons inside them
+  const webhookCards = Array.from(document.querySelectorAll('div[data-webhook-id][data-webhook-tags]')) as HTMLElement[]
 
   webhookCards.forEach((card) => {
     const cardTags = card.dataset.webhookTags || ''
@@ -521,7 +600,6 @@ function applyTagFilter(tag: string) {
 
     if (tagsArray.includes(tag)) {
       card.style.display = ''
-      card.style.backgroundColor = 'var(--muted)'
     } else {
       card.style.display = 'none'
     }
@@ -558,6 +636,18 @@ function handleToggleUserMenu() {
     menu.classList.remove('hidden')
   } else {
     menu.classList.add('hidden')
+  }
+}
+
+function handleToggleDateRange() {
+  const dropdown = document.querySelector('[data-filter-dropdown="date-range"]') as HTMLElement
+  if (!dropdown) return
+
+  // Toggle visibility
+  if (dropdown.classList.contains('hidden')) {
+    dropdown.classList.remove('hidden')
+  } else {
+    dropdown.classList.add('hidden')
   }
 }
 

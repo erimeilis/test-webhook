@@ -11,6 +11,7 @@ dist/
 .output/
 admin/dist/
 webhook-worker/target/
+admin/src/lib/build-info.ts
 
 # TypeScript
 *.tsbuildinfo

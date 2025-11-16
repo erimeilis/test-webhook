@@ -30,6 +30,8 @@ export interface TableProps<T> {
   defaultPageSize?: number
   filters?: React.ReactNode
   totalRecords?: number
+  sortColumn?: string
+  sortDirection?: 'asc' | 'desc'
 }
 
 export function Table<T extends Record<string, unknown>>({
@@ -43,7 +45,9 @@ export function Table<T extends Record<string, unknown>>({
   currentPage = 1,
   defaultPageSize = 10,
   filters,
-  totalRecords
+  totalRecords,
+  sortColumn,
+  sortDirection
 }: TableProps<T>) {
   // Server-side pagination: store total records for pagination controls
   const total = totalRecords ?? data.length
@@ -55,10 +59,10 @@ export function Table<T extends Record<string, unknown>>({
     <div className={`w-full ${className}`} data-table-container={tableId} data-total-records={total}>
       {/* Search and Filters */}
       {(searchable || filters) && (
-        <div className="mb-4 flex flex-col sm:flex-row gap-4">
+        <div className="mb-4 flex flex-col sm:flex-row gap-4 items-center sm:items-start">
           {/* Search bar */}
           {searchable && (
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative w-full sm:flex-1 sm:max-w-sm">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -78,14 +82,14 @@ export function Table<T extends Record<string, unknown>>({
                 type="text"
                 data-table-search={tableId}
                 placeholder={searchPlaceholder}
-                className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="w-full h-9 pl-10 pr-4 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               />
             </div>
           )}
 
           {/* Custom filters */}
           {filters && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-start w-full sm:w-auto">
               {filters}
             </div>
           )}
@@ -115,21 +119,44 @@ export function Table<T extends Record<string, unknown>>({
                     <span>{column.label}</span>
                     {column.sortable && (
                       <span className="text-muted-foreground flex-shrink-0" data-sort-icon={column.key}>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="opacity-50"
-                        >
-                          <path d="m7 15 5 5 5-5" />
-                          <path d="m7 9 5-5 5 5" />
-                        </svg>
+                        {sortColumn === column.key ? (
+                          // Active sort - show single arrow
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-primary"
+                          >
+                            {sortDirection === 'asc' ? (
+                              <path d="m7 15 5-5 5 5" />
+                            ) : (
+                              <path d="m7 9 5 5 5-5" />
+                            )}
+                          </svg>
+                        ) : (
+                          // Not sorted - show dual arrows
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="opacity-50"
+                          >
+                            <path d="m7 15 5 5 5-5" />
+                            <path d="m7 9 5-5 5 5" />
+                          </svg>
+                        )}
                       </span>
                     )}
                   </div>

@@ -254,9 +254,16 @@ npm run db:migrate   # Reapply migrations
 ├── 🎨 admin/              # TypeScript admin panel worker
 │   ├── src/
 │   │   ├── handlers/      # Route handlers
+│   │   ├── services/      # Business logic layer
+│   │   ├── repositories/  # Data access layer
 │   │   ├── components/    # React components (shadcn/ui)
 │   │   ├── client/        # Client-side code
-│   │   └── middleware/    # Auth & session middleware
+│   │   ├── middleware/    # Auth & services middleware
+│   │   ├── lib/           # Utilities (crypto, formatting, validation)
+│   │   └── types/         # TypeScript type definitions
+│   ├── tests/             # Test suites
+│   │   └── unit/          # Unit tests for components
+│   └── scripts/           # Build scripts (build-info generation)
 ├── 🔗 shared/             # Shared schemas and types
 ├── 📊 scripts/            # Load testing & deployment scripts
 └── 💾 migrations/         # D1 database migrations

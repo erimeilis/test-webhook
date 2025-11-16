@@ -8,7 +8,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { TagsInput } from '@/components/ui/TagsInput'
-import type { Webhook, CodeExample, Collaborator, EditWebhookFormData } from '@/types/webhooks'
+import type { Webhook, CodeExample, Collaborator } from '@/types/webhooks'
 import { IconX, IconCopy, IconCheck } from '@tabler/icons-react'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -95,7 +95,7 @@ function renderModal(component: React.ReactElement): { root: Root; container: HT
 }
 
 // Create webhook modal
-export function showCreateWebhookModal(): Promise<{ name: string; tags: string } | null> {
+export function showCreateWebhookModal(): Promise<{ name: string; tags: string[] } | null> {
   return new Promise((resolve) => {
     function CreateWebhookModal() {
       const [name, setName] = React.useState('')
@@ -106,7 +106,7 @@ export function showCreateWebhookModal(): Promise<{ name: string; tags: string }
         const trimmedName = name.trim()
         if (trimmedName) {
           cleanup()
-          resolve({ name: trimmedName, tags: tags.join(', ') })
+          resolve({ name: trimmedName, tags })
         }
       }
 
@@ -258,7 +258,7 @@ export function showSuccessModal(message: string): void {
 }
 
 // Edit webhook modal
-export function showEditWebhookModal(webhook: Partial<Webhook>): Promise<EditWebhookFormData | null> {
+export function showEditWebhookModal(webhook: Partial<Webhook>): Promise<{ name: string; tags: string[] } | null> {
   return new Promise((resolve) => {
     function EditWebhookModal() {
       const [name, setName] = React.useState(webhook.name ?? '')
@@ -272,7 +272,7 @@ export function showEditWebhookModal(webhook: Partial<Webhook>): Promise<EditWeb
 
         if (trimmedName) {
           cleanup()
-          resolve({ name: trimmedName, tags: tags.join(', ') })
+          resolve({ name: trimmedName, tags })
         }
       }
 

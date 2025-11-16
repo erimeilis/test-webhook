@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.1.0] - 2025-11-16 🏗️
+
+### Architecture 🏛️
+- **Service/Repository pattern** - Clean separation of business logic and data access
+  - Created service layer for webhooks, webhook data, webhook shares, and users
+  - Repository layer for type-safe database operations
+  - Validation layer with Zod schemas for request handling
+  - Structured error handling with custom error classes
+
+### Added ✨
+- **Comprehensive UI component tests** - Full test coverage for all components
+  - Badge, Button, Input, Select, Pagination components (280-380 lines each)
+  - DateRangePicker, TagsInput, Modal components (280-480 lines each)
+  - Table, ToggleSwitch components (500+ lines each)
+  - Total: 3,500+ lines of tests with 100+ test cases
+- **Footer component** - Version display with build timestamp
+  - Auto-generated build info from package.json
+  - Displays version number and build datetime
+  - Subtle muted styling with small font
+  - Positioned at page bottom with flexbox layout
+- **Utility modules** - Reusable helpers and formatters
+  - Crypto utilities for MD5 hashing
+  - Formatting utilities for dates and sizes
+  - Gravatar URL generation
+  - `text-muted` CSS utility class
+
+### Changed 🔄
+- **Refactored dashboard handler** - From 600+ to 180 lines using service pattern
+- **Improved webhook handlers** - Streamlined with validation and error handling
+- **Enhanced admin handlers** - Service-based user management
+- **Test organization** - Moved tests from `src/` to `tests/unit/components/ui/`
+- **Dashboard layout** - Flex column for proper footer positioning
+- **Table sorting/filtering** - AJAX-based updates without page reload
+  - Eliminated page "blinking" during sort/filter operations
+  - Dynamic sort icon updates (active column shows single arrow, inactive show dual arrows)
+  - URL updates via History API without navigation
+  - Loading state feedback during AJAX requests
+  - Graceful fallback to page reload on errors
+
+### Fixed 🐛
+- **Page reload on table sort/filter** - Replaced full page navigation with AJAX updates
+- **Sort icon state** - Icons now correctly reflect active sort column and direction
+- **Footer positioning** - Footer stays at bottom even with minimal content
+- **Footer datetime format** - Shows actual build datetime instead of relative time
+
+### Technical 🔧
+- Build info auto-generation script runs before dev/build
+- Import path updates for relocated test files
+- Enhanced type safety with Zod validation schemas
+- Middleware for service injection into Hono context
+- AJAX-based table updates with DOMParser for content extraction
+- History API integration for URL state management without reload
+
+---
+
 ## [1.0.1] - 2025-11-13 ⚡
 
 ### Performance 🚀

@@ -1,5 +1,5 @@
 /**
- * Dashboard Handlers
+ * Dashboard Handler (Refactored)
  * Main dashboard view after authentication
  */
 
@@ -12,181 +12,18 @@ import { Badge } from '@/components/ui/Badge'
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch'
 import { AdminPanel, type UserStats } from '@/components/AdminPanel'
 import { WebhookFilters } from '@/components/WebhookFilters'
-import { drizzle } from 'drizzle-orm/d1'
-import { webhooks, webhookData, webhookShares, user as userTable } from '@/lib/db-schema'
-import { eq, desc, or, and, asc, sql } from 'drizzle-orm'
-import type { WebhookData } from '@/types/webhooks'
+import type { WebhookData as WebhookDataType } from '@/types/webhooks'
 import { IconPlus, IconX } from '@tabler/icons-react'
+import { getGravatarUrl } from '@/lib/utils/gravatar'
+import { Footer } from '@/components/Footer'
 
 type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>
 
-// Simple MD5 implementation for Gravatar
-function md5(str: string): string {
-  function rotateLeft(n: number, s: number) {
-    return (n << s) | (n >>> (32 - s))
-  }
-
-  function addUnsigned(x: number, y: number) {
-    const lsw = (x & 0xFFFF) + (y & 0xFFFF)
-    const msw = (x >> 16) + (y >> 16) + (lsw >> 16)
-    return (msw << 16) | (lsw & 0xFFFF)
-  }
-
-  function f(x: number, y: number, z: number) { return (x & y) | ((~x) & z) }
-  function g(x: number, y: number, z: number) { return (x & z) | (y & (~z)) }
-  function h(x: number, y: number, z: number) { return x ^ y ^ z }
-  function i(x: number, y: number, z: number) { return y ^ (x | (~z)) }
-
-  function ff(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(f(b, c, d), x), ac))
-    return addUnsigned(rotateLeft(a, s), b)
-  }
-
-  function gg(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(g(b, c, d), x), ac))
-    return addUnsigned(rotateLeft(a, s), b)
-  }
-
-  function hh(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(h(b, c, d), x), ac))
-    return addUnsigned(rotateLeft(a, s), b)
-  }
-
-  function ii(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
-    a = addUnsigned(a, addUnsigned(addUnsigned(i(b, c, d), x), ac))
-    return addUnsigned(rotateLeft(a, s), b)
-  }
-
-  function convertToWordArray(str: string) {
-    const lWordCount = (((str.length + 8) - ((str.length + 8) % 64)) / 64 + 1) * 16
-    const lWordArray = new Array(lWordCount - 1)
-    let lBytePosition = 0
-    let lByteCount = 0
-
-    while (lByteCount < str.length) {
-      const lWordIndex = (lByteCount - (lByteCount % 4)) / 4
-      lBytePosition = (lByteCount % 4) * 8
-      lWordArray[lWordIndex] = (lWordArray[lWordIndex] || 0) | (str.charCodeAt(lByteCount) << lBytePosition)
-      lByteCount++
-    }
-
-    const lWordIndex = (lByteCount - (lByteCount % 4)) / 4
-    lBytePosition = (lByteCount % 4) * 8
-    lWordArray[lWordIndex] = lWordArray[lWordIndex] | (0x80 << lBytePosition)
-    lWordArray[lWordCount - 2] = str.length * 8
-    return lWordArray
-  }
-
-  function wordToHex(n: number) {
-    let hex = ''
-    for (let i = 0; i <= 3; i++) {
-      const byte = (n >>> (i * 8)) & 255
-      hex += ('0' + byte.toString(16)).slice(-2)
-    }
-    return hex
-  }
-
-  const x = convertToWordArray(str)
-  let a = 0x67452301
-  let b = 0xEFCDAB89
-  let c = 0x98BADCFE
-  let d = 0x10325476
-
-  for (let k = 0; k < x.length; k += 16) {
-    const AA = a, BB = b, CC = c, DD = d
-
-    a = ff(a, b, c, d, x[k + 0],  7, 0xD76AA478)
-    d = ff(d, a, b, c, x[k + 1],  12, 0xE8C7B756)
-    c = ff(c, d, a, b, x[k + 2],  17, 0x242070DB)
-    b = ff(b, c, d, a, x[k + 3],  22, 0xC1BDCEEE)
-    a = ff(a, b, c, d, x[k + 4],  7, 0xF57C0FAF)
-    d = ff(d, a, b, c, x[k + 5],  12, 0x4787C62A)
-    c = ff(c, d, a, b, x[k + 6],  17, 0xA8304613)
-    b = ff(b, c, d, a, x[k + 7],  22, 0xFD469501)
-    a = ff(a, b, c, d, x[k + 8],  7, 0x698098D8)
-    d = ff(d, a, b, c, x[k + 9],  12, 0x8B44F7AF)
-    c = ff(c, d, a, b, x[k + 10], 17, 0xFFFF5BB1)
-    b = ff(b, c, d, a, x[k + 11], 22, 0x895CD7BE)
-    a = ff(a, b, c, d, x[k + 12], 7, 0x6B901122)
-    d = ff(d, a, b, c, x[k + 13], 12, 0xFD987193)
-    c = ff(c, d, a, b, x[k + 14], 17, 0xA679438E)
-    b = ff(b, c, d, a, x[k + 15], 22, 0x49B40821)
-
-    a = gg(a, b, c, d, x[k + 1],  5, 0xF61E2562)
-    d = gg(d, a, b, c, x[k + 6],  9, 0xC040B340)
-    c = gg(c, d, a, b, x[k + 11], 14, 0x265E5A51)
-    b = gg(b, c, d, a, x[k + 0],  20, 0xE9B6C7AA)
-    a = gg(a, b, c, d, x[k + 5],  5, 0xD62F105D)
-    d = gg(d, a, b, c, x[k + 10], 9, 0x02441453)
-    c = gg(c, d, a, b, x[k + 15], 14, 0xD8A1E681)
-    b = gg(b, c, d, a, x[k + 4],  20, 0xE7D3FBC8)
-    a = gg(a, b, c, d, x[k + 9],  5, 0x21E1CDE6)
-    d = gg(d, a, b, c, x[k + 14], 9, 0xC33707D6)
-    c = gg(c, d, a, b, x[k + 3],  14, 0xF4D50D87)
-    b = gg(b, c, d, a, x[k + 8],  20, 0x455A14ED)
-    a = gg(a, b, c, d, x[k + 13], 5, 0xA9E3E905)
-    d = gg(d, a, b, c, x[k + 2],  9, 0xFCEFA3F8)
-    c = gg(c, d, a, b, x[k + 7],  14, 0x676F02D9)
-    b = gg(b, c, d, a, x[k + 12], 20, 0x8D2A4C8A)
-
-    a = hh(a, b, c, d, x[k + 5],  4, 0xFFFA3942)
-    d = hh(d, a, b, c, x[k + 8],  11, 0x8771F681)
-    c = hh(c, d, a, b, x[k + 11], 16, 0x6D9D6122)
-    b = hh(b, c, d, a, x[k + 14], 23, 0xFDE5380C)
-    a = hh(a, b, c, d, x[k + 1],  4, 0xA4BEEA44)
-    d = hh(d, a, b, c, x[k + 4],  11, 0x4BDECFA9)
-    c = hh(c, d, a, b, x[k + 7],  16, 0xF6BB4B60)
-    b = hh(b, c, d, a, x[k + 10], 23, 0xBEBFBC70)
-    a = hh(a, b, c, d, x[k + 13], 4, 0x289B7EC6)
-    d = hh(d, a, b, c, x[k + 0],  11, 0xEAA127FA)
-    c = hh(c, d, a, b, x[k + 3],  16, 0xD4EF3085)
-    b = hh(b, c, d, a, x[k + 6],  23, 0x04881D05)
-    a = hh(a, b, c, d, x[k + 9],  4, 0xD9D4D039)
-    d = hh(d, a, b, c, x[k + 12], 11, 0xE6DB99E5)
-    c = hh(c, d, a, b, x[k + 15], 16, 0x1FA27CF8)
-    b = hh(b, c, d, a, x[k + 2],  23, 0xC4AC5665)
-
-    a = ii(a, b, c, d, x[k + 0],  6, 0xF4292244)
-    d = ii(d, a, b, c, x[k + 7],  10, 0x432AFF97)
-    c = ii(c, d, a, b, x[k + 14], 15, 0xAB9423A7)
-    b = ii(b, c, d, a, x[k + 5],  21, 0xFC93A039)
-    a = ii(a, b, c, d, x[k + 12], 6, 0x655B59C3)
-    d = ii(d, a, b, c, x[k + 3],  10, 0x8F0CCC92)
-    c = ii(c, d, a, b, x[k + 10], 15, 0xFFEFF47D)
-    b = ii(b, c, d, a, x[k + 1],  21, 0x85845DD1)
-    a = ii(a, b, c, d, x[k + 8],  6, 0x6FA87E4F)
-    d = ii(d, a, b, c, x[k + 15], 10, 0xFE2CE6E0)
-    c = ii(c, d, a, b, x[k + 6],  15, 0xA3014314)
-    b = ii(b, c, d, a, x[k + 13], 21, 0x4E0811A1)
-    a = ii(a, b, c, d, x[k + 4],  6, 0xF7537E82)
-    d = ii(d, a, b, c, x[k + 11], 10, 0xBD3AF235)
-    c = ii(c, d, a, b, x[k + 2],  15, 0x2AD7D2BB)
-    b = ii(b, c, d, a, x[k + 9],  21, 0xEB86D391)
-
-    a = addUnsigned(a, AA)
-    b = addUnsigned(b, BB)
-    c = addUnsigned(c, CC)
-    d = addUnsigned(d, DD)
-  }
-
-  return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase()
-}
-
-// Helper to generate Gravatar URL
-function getGravatarUrl(email: string | undefined): string {
-  if (!email) {
-    return 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&s=32'
-  }
-
-  const hash = md5(email.toLowerCase().trim())
-  return `https://www.gravatar.com/avatar/${hash}?d=mp&s=32`
-}
-
-// Dashboard page - protected route
 export async function handleDashboard(c: AppContext) {
   const user = c.get('user')
   const isAdmin = c.get('isAdmin')
   const isImpersonating = c.get('isImpersonating')
+  const services = c.get('services')
 
   if (!user) {
     return c.redirect('/login?error=unauthorized')
@@ -198,235 +35,137 @@ export async function handleDashboard(c: AppContext) {
   // Get active tag filter from query params (optional)
   const activeTag = c.req.query('tag')
 
-  // Fetch webhooks for the user
-  const db = drizzle(c.env.DB)
-  const userWebhooks = await db
-    .select()
-    .from(webhooks)
-    .where(eq(webhooks.userId, user.id))
-    .orderBy(webhooks.createdAt)
-    .all()
+  // Helper function to convert JSON tags to comma-separated string
+  const formatTags = (tags: string | null): string | null => {
+    if (!tags) return null
+    try {
+      const parsed = JSON.parse(tags)
+      return Array.isArray(parsed) ? parsed.join(',') : tags
+    } catch {
+      return tags
+    }
+  }
 
-  // Fetch all users with stats for admin
+  // Fetch user webhooks (owned + shared)
+  const { owned: ownedWebhooks, shared: sharedWebhooksData } =
+    await services.webhooks.getUserWebhooks(user.id, user.email)
+
+  // Transform owned webhooks to format tags
+  const userWebhooks = ownedWebhooks.map(w => ({
+    ...w,
+    tags: formatTags(w.tags)
+  }))
+
+  // Transform shared webhooks to match component interface
+  const sharedWebhooks = sharedWebhooksData.map(s => ({
+    shareId: s.webhook.id, // Using webhook id as shareId for now
+    id: s.webhook.id,
+    uuid: s.webhook.uuid,
+    name: s.webhook.name,
+    tags: formatTags(s.webhook.tags),
+    role: s.role,
+    invitedAt: s.invitedAt
+  }))
+
+  // Fetch admin stats if user is admin
   let allUsersStats: UserStats[] = []
   if (isAdmin) {
     try {
-      // Get all users
-      const allUsers = await db
-        .select({
-          id: userTable.id,
-          email: userTable.email,
-          name: userTable.name,
-          role: userTable.role,
-          emailVerified: userTable.emailVerified,
-          createdAt: userTable.createdAt,
-        })
-        .from(userTable)
-        .orderBy(desc(userTable.createdAt))
-        .all()
-
-      // Get webhook counts for each user
-      const webhookCounts = await db
-        .select({
-          userId: webhooks.userId,
-          count: sql<number>`count(*)`.as('count'),
-        })
-        .from(webhooks)
-        .groupBy(webhooks.userId)
-        .all()
-
-      // Get request counts and total bytes for each user
-      const requestStats = await db
-        .select({
-          userId: webhooks.userId,
-          requestCount: sql<number>`count(${webhookData.id})`.as('requestCount'),
-          totalBytes: sql<number>`sum(${webhookData.sizeBytes})`.as('totalBytes'),
-        })
-        .from(webhooks)
-        .leftJoin(webhookData, eq(webhooks.id, webhookData.webhookId))
-        .groupBy(webhooks.userId)
-        .all()
-
-      // Combine all stats
-      allUsersStats = allUsers.map(u => {
-        const webhookCount = webhookCounts.find(wc => wc.userId === u.id)?.count || 0
-        const stats = requestStats.find(rs => rs.userId === u.id)
-
-        return {
-          id: u.id,
-          email: u.email,
-          name: u.name,
-          role: u.role,
-          emailVerified: u.emailVerified,
-          createdAt: u.createdAt,
-          webhookCount,
-          requestCount: stats?.requestCount || 0,
-          totalBytes: stats?.totalBytes || 0,
-        }
-      })
+      const stats = await services.users.getAllUsersWithStats(user.id)
+      // Cast to UserStats (UserWithStats is compatible, just missing index signature)
+      allUsersStats = stats as unknown as UserStats[]
     } catch (error) {
       console.error('❌ Error fetching admin stats:', error)
       // Continue rendering without admin panel
     }
   }
 
-  // Fetch shared webhooks for this user
-  const sharedWebhooks = await db
-    .select({
-      shareId: webhookShares.id,
-      id: webhooks.id,
-      uuid: webhooks.uuid,
-      name: webhooks.name,
-      tags: webhooks.tags,
-      role: webhookShares.role,
-      invitedAt: webhookShares.invitedAt,
-    })
-    .from(webhookShares)
-    .leftJoin(webhooks, eq(webhookShares.webhookId, webhooks.id))
-    .where(
-      or(
-        eq(webhookShares.sharedWithEmail, user.email.toLowerCase()),
-        eq(webhookShares.sharedWithUserId, user.id)
-      )
-    )
-    .all()
-
-  // Fetch requests if viewing specific webhook
+  // Fetch webhook data if viewing specific webhook
   let selectedWebhook = null
-  let requests: WebhookData[] = []
+  let requests: WebhookDataType[] = []
   let page = 1
   let pageSize = 10
   let totalRecords = 0
   let methodFilter: string | null = null
+  let sortColumn = 'received_at'
+  let sortDirection = 'desc'
 
   if (webhookId) {
-    // Verify webhook belongs to user OR is shared with them
-    selectedWebhook = userWebhooks.find(w => w.id === webhookId)
+    // Verify access and get webhook
+    const hasAccess = await services.webhooks.verifyAccess(webhookId, user.id)
+    if (hasAccess) {
+      selectedWebhook = userWebhooks.find(w => w.id === webhookId) ||
+                        sharedWebhooksData.find(s => s.webhook.id === webhookId)?.webhook
 
-    // If not owned, check if it's shared with the user
-    if (!selectedWebhook) {
-      const sharedWebhook = await db
-        .select()
-        .from(webhooks)
-        .where(eq(webhooks.id, webhookId))
-        .get()
+      if (selectedWebhook) {
+        try {
+          // Parse query parameters for filtering, sorting, pagination
+          const searchParams = new URL(c.req.url).searchParams
+          page = Number(searchParams.get('requests_table_page') || '1')
+          pageSize = Number(searchParams.get('requests_table_size') || '10')
+          sortColumn = searchParams.get('requests_table_sort') || 'received_at'
+          sortDirection = searchParams.get('requests_table_dir') || 'desc'
+          const searchQuery = searchParams.get('requests_table_search') || ''
+          methodFilter = searchParams.get('requests_table_method') || null
+          const dateStart = searchParams.get('requests_table_date_start') || null
+          const dateEnd = searchParams.get('requests_table_date_end') || null
 
-      if (sharedWebhook) {
-        const hasAccess = sharedWebhooks.some(sw => sw.id === webhookId)
-        if (hasAccess) {
-          selectedWebhook = sharedWebhook
+          // Fetch webhook data using service
+          const result = await services.webhookData.getWebhookData(webhookId, user.id, {
+            page,
+            pageSize,
+            sortColumn: sortColumn as 'received_at' | 'method' | 'size_bytes',
+            sortDirection: sortDirection as 'asc' | 'desc',
+            search: searchQuery || undefined,
+            method: methodFilter === 'GET' || methodFilter === 'POST' ? methodFilter : undefined,
+            dateStart: dateStart || undefined,
+            dateEnd: dateEnd || undefined
+          })
+
+          requests = result.data.map(r => ({
+            id: r.id,
+            webhook_id: r.webhookId,
+            method: r.method as 'GET' | 'POST',
+            headers: r.headers,
+            data: r.data,
+            size_bytes: r.sizeBytes,
+            received_at: typeof r.receivedAt === 'number' ? r.receivedAt : Math.floor(r.receivedAt.getTime() / 1000)
+          }))
+          totalRecords = result.total
+        } catch (error) {
+          console.error('❌ Error fetching webhook data:', error)
         }
-      }
-    }
-
-    if (selectedWebhook) {
-      try {
-        // Read query parameters for filtering, sorting, pagination
-        const searchParams = new URL(c.req.url).searchParams
-        page = Number(searchParams.get('requests_table_page') || '1')
-        pageSize = Number(searchParams.get('requests_table_size') || '10')
-        const sortColumn = searchParams.get('requests_table_sort') || 'received_at'
-        const sortDirection = searchParams.get('requests_table_dir') || 'desc'
-        const searchQuery = searchParams.get('requests_table_search') || ''
-        methodFilter = searchParams.get('requests_table_method') || null
-        const dateStart = searchParams.get('requests_table_date_start') || null
-        const dateEnd = searchParams.get('requests_table_date_end') || null
-
-        console.log('🔍 Query params:', { page, pageSize, sortColumn, sortDirection, searchQuery, methodFilter, dateStart, dateEnd })
-
-        // Build WHERE conditions
-        const conditions = [eq(webhookData.webhookId, webhookId)]
-
-        // Method filter
-        if (methodFilter) {
-          conditions.push(eq(webhookData.method, methodFilter))
-        }
-
-        // Date range filter
-        if (dateStart && dateEnd) {
-          const startTimestamp = Math.floor(new Date(dateStart).getTime() / 1000)
-          const endTimestamp = Math.floor(new Date(dateEnd).getTime() / 1000) + (24 * 60 * 60)
-          conditions.push(
-            sql`${webhookData.receivedAt} >= ${startTimestamp} AND ${webhookData.receivedAt} < ${endTimestamp}`
-          )
-        }
-
-        // Search filter (search in data and headers)
-        if (searchQuery) {
-          conditions.push(
-            sql`(${webhookData.data} LIKE ${'%' + searchQuery + '%'} OR ${webhookData.headers} LIKE ${'%' + searchQuery + '%'})`
-          )
-        }
-
-        // Sorting
-        const orderByColumn = sortColumn === 'received_at' ? webhookData.receivedAt :
-                             sortColumn === 'method' ? webhookData.method :
-                             sortColumn === 'size_bytes' ? webhookData.sizeBytes :
-                             webhookData.receivedAt
-        const orderByDirection = sortDirection === 'asc' ? asc : desc
-
-        // Pagination
-        const offset = (page - 1) * pageSize
-
-        const dbRequests = await db
-          .select()
-          .from(webhookData)
-          .where(and(...conditions))
-          .orderBy(orderByDirection(orderByColumn))
-          .limit(pageSize)
-          .offset(offset)
-          .all()
-
-        // Get total count for pagination (with same filters)
-        const countResult = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(webhookData)
-          .where(and(...conditions))
-          .get()
-
-        totalRecords = countResult?.count || 0
-        console.log('📊 Fetched requests:', dbRequests.length, 'of', totalRecords, 'total')
-
-        // Transform DB records to match WebhookData interface
-        requests = dbRequests.map(req => {
-          // Handle receivedAt which could be Date or number
-          let timestamp: number
-          if (req.receivedAt instanceof Date) {
-            timestamp = Math.floor(req.receivedAt.getTime() / 1000)
-          } else if (typeof req.receivedAt === 'number') {
-            // Already a timestamp
-            timestamp = req.receivedAt
-          } else {
-            // Fallback to current time
-            console.warn('Invalid receivedAt format:', req.receivedAt)
-            timestamp = Math.floor(Date.now() / 1000)
-          }
-
-          return {
-            id: req.id,
-            webhook_id: req.webhookId,
-            method: req.method as 'GET' | 'POST',
-            headers: req.headers,
-            data: req.data,
-            size_bytes: req.sizeBytes,
-            received_at: timestamp
-          }
-        })
-
-        console.log('✅ Transformed requests:', requests.length)
-      } catch (error) {
-        console.error('❌ Error fetching webhook requests:', error)
-        // Continue rendering with empty requests array
       }
     }
   }
 
+  // Parse user tags from all webhooks
+  const allTags = new Set<string>()
+  userWebhooks.forEach(webhook => {
+    if (webhook.tags) {
+      try {
+        const tags = JSON.parse(webhook.tags)
+        if (Array.isArray(tags)) {
+          tags.forEach(tag => allTags.add(tag))
+        }
+      } catch {
+        // Ignore invalid JSON
+      }
+    }
+  })
+
+  // Note: Tag filtering is handled client-side via JavaScript (see client.js)
+  // Server just passes activeTag for UI state, no server-side filtering needed
+
+  // Generate gravatar URL
   const gravatarUrl = getGravatarUrl(user.email)
+
+  // Get webhook worker URL
   const webhookWorkerUrl = c.env.WEBHOOK_WORKER_URL || 'http://localhost:5174'
 
   // Table columns configuration
-  // Order: Headers+Datetime (combined), Payload, Method, Size
-  const requestsColumns: TableColumn<WebhookData>[] = [
+  // Order: Datetime (desktop only), Headers (with mobile datetime), Payload, Method (desktop only), Size (desktop only)
+  const columns: TableColumn<WebhookDataType>[] = [
     {
       key: 'received_at',
       label: 'Datetime',
@@ -527,7 +266,7 @@ export async function handleDashboard(c: AppContext) {
 
         return (
           <div
-            className="text-xs font-mono cursor-pointer hover:text-primary transition-colors truncate max-w-xl"
+            className="text-xs font-mono cursor-pointer hover:text-primary transition-colors break-all"
             data-payload={stringValue}
             title="Click to view full payload"
           >
@@ -564,73 +303,74 @@ export async function handleDashboard(c: AppContext) {
     }
   ]
 
+  // Render component (JSX)
   return c.render(
-    <div className="min-h-screen bg-background">
-      {/* Header - Sticky with compact mode on scroll */}
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm transition-all" data-header>
         <div className="container mx-auto px-4 py-3 max-w-7xl transition-all" data-header-content>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                  <path d="M16 9v6a5 5 0 0 1 -10 0v-4l3 3"/>
-                  <path d="M16 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
-                  <path d="M16 5v-2"/>
-                </svg>
-                <h1 className="text-lg min-[768px]:text-xl font-bold whitespace-nowrap">Webhooks</h1>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <path d="M16 9v6a5 5 0 0 1 -10 0v-4l3 3"/>
+                <path d="M16 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                <path d="M16 5v-2"/>
+              </svg>
+              <h1 className="text-lg min-[768px]:text-xl font-bold whitespace-nowrap">Webhooks</h1>
             </div>
 
             {/* Desktop: Email + Sign Out / Return to Admin */}
             <div className="hidden min-[768px]:flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                    <img src={gravatarUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
-                    <div className="flex flex-col">
-                      {isImpersonating && (
-                        <span className="text-xs text-amber-400 font-medium">Impersonating</span>
-                      )}
-                      <span className="text-sm text-muted-foreground">{user.email}</span>
-                    </div>
+              <div className="flex items-center gap-2">
+                <img src={gravatarUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
+                <div className="flex flex-col">
+                  {isImpersonating && (
+                    <span className="text-xs text-amber-400 font-medium">Impersonating</span>
+                  )}
+                  <span className="text-sm text-muted-foreground">{user.email}</span>
+                </div>
+              </div>
+              <Button
+                data-action={isImpersonating ? "stop-impersonation" : "sign-out"}
+                color="secondary"
+                style="outline"
+                size="sm"
+              >
+                {isImpersonating ? "Return to Admin" : "Sign Out"}
+              </Button>
+            </div>
+
+            {/* Mobile: Gravatar with Dropdown */}
+            <div className="min-[768px]:hidden relative">
+              <button
+                className="w-10 h-10 rounded-full overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                data-action="toggle-user-menu"
+                title="User menu"
+              >
+                <img src={gravatarUrl} alt="Avatar" className="w-full h-full pointer-events-none" />
+              </button>
+
+              {/* Dropdown Menu */}
+              <div className="hidden absolute right-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg p-3" data-user-menu>
+                <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
+                  <img src={gravatarUrl} alt="Avatar" className="w-10 h-10 rounded-full" />
+                  <div className="flex flex-col flex-1 min-w-0">
+                    {isImpersonating && (
+                      <span className="text-xs text-amber-400 font-medium">Impersonating</span>
+                    )}
+                    <span className="text-sm text-muted-foreground truncate">{user.email}</span>
+                  </div>
                 </div>
                 <Button
                   color="secondary"
                   style="outline"
                   size="sm"
                   data-action={isImpersonating ? "stop-impersonation" : "sign-out"}
+                  className="w-full"
                 >
                   {isImpersonating ? "Return to Admin" : "Sign Out"}
                 </Button>
-            </div>
-
-            {/* Mobile: Gravatar with Dropdown */}
-            <div className="min-[768px]:hidden relative">
-                <button
-                    className="w-10 h-10 rounded-full overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                    data-action="toggle-user-menu"
-                    title="User menu"
-                >
-                    <img src={gravatarUrl} alt="Avatar" className="w-full h-full pointer-events-none" />
-                </button>
-
-                {/* Dropdown Menu */}
-                <div className="hidden absolute right-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg p-3" data-user-menu>
-                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
-                        <img src={gravatarUrl} alt="Avatar" className="w-10 h-10 rounded-full" />
-                        <div className="flex flex-col flex-1 min-w-0">
-                          {isImpersonating && (
-                            <span className="text-xs text-amber-400 font-medium">Impersonating</span>
-                          )}
-                          <span className="text-sm text-muted-foreground truncate">{user.email}</span>
-                        </div>
-                    </div>
-                    <Button
-                      color="secondary"
-                      style="outline"
-                      size="sm"
-                      data-action={isImpersonating ? "stop-impersonation" : "sign-out"}
-                      className="w-full"
-                    >
-                      {isImpersonating ? "Return to Admin" : "Sign Out"}
-                    </Button>
-                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -645,7 +385,7 @@ export async function handleDashboard(c: AppContext) {
           )}
 
           {/* Filter Panel */}
-          <WebhookFilters activeTag={activeTag} />
+          {activeTag && <WebhookFilters activeTag={activeTag} />}
 
           {/* Shared Webhooks Section */}
           {sharedWebhooks.length > 0 && (
@@ -732,6 +472,7 @@ export async function handleDashboard(c: AppContext) {
                       webhook={webhook}
                       webhookWorkerUrl={webhookWorkerUrl}
                       isActive={webhook.id === webhookId}
+                      isOwner={true}
                     />
                   ))}
                 </div>
@@ -759,34 +500,30 @@ export async function handleDashboard(c: AppContext) {
               </div>
               <div className="p-4 min-[768px]:p-6">
                 <Table
+                  columns={columns}
                   data={requests}
-                  columns={requestsColumns}
-                  searchable={true}
-                  searchPlaceholder="Search requests by method, data, or timestamp..."
-                  emptyMessage="No requests received yet. Send a request to this webhook to see it appear here."
-                  tableId="requests_table"
                   currentPage={page}
                   defaultPageSize={pageSize}
                   totalRecords={totalRecords}
+                  tableId="requests_table"
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection as 'asc' | 'desc'}
                   filters={
                     <>
                       {/* Date Range Filter */}
                       <div className="relative">
-                        <button
-                          data-filter-toggle="date-range"
-                          className="px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-2"
+                        <Button
+                          color="secondary"
+                          style="outline"
+                          size="sm"
+                          className="h-9"
+                          data-action="toggle-date-range"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                          </svg>
-                          <span data-filter-label="date-range">All dates</span>
-                        </button>
+                          Date Range
+                        </Button>
                         <div
+                          className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg z-50 hidden backdrop-blur-sm"
                           data-filter-dropdown="date-range"
-                          className="hidden absolute top-full mt-2 z-10 bg-card border border-border rounded-lg shadow-lg min-w-[280px]"
                         >
                           <div className="p-3 space-y-3">
                             <div>
@@ -807,18 +544,24 @@ export async function handleDashboard(c: AppContext) {
                             </div>
                           </div>
                           <div className="border-t border-border p-2 flex gap-2">
-                            <button
+                            <Button
                               data-filter-clear="date-range"
-                              className="flex-1 px-3 py-1.5 text-sm bg-background hover:bg-muted rounded transition-colors"
+                              color="secondary"
+                              style="ghost"
+                              size="sm"
+                              modifier="wide"
                             >
                               Clear
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               data-filter-apply="date-range"
-                              className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:opacity-90 rounded transition-colors"
+                              color="primary"
+                              style="solid"
+                              size="sm"
+                              modifier="wide"
                             >
                               Apply
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -843,6 +586,7 @@ export async function handleDashboard(c: AppContext) {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

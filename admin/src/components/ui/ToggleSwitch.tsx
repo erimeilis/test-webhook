@@ -6,7 +6,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const toggleSwitchVariants = cva(
-  'relative inline-flex rounded-lg p-1 transition-colors',
+  'relative inline-grid gap-1 rounded-lg p-1 h-9 transition-colors',
   {
     variants: {
       color: {
@@ -33,53 +33,25 @@ const toggleSwitchVariants = cva(
 )
 
 const indicatorVariants = cva(
-  'absolute inset-y-1 rounded-md transition-all duration-200 ease-out pointer-events-none',
+  'rounded-md transition-all duration-300 ease-out pointer-events-none h-full border',
   {
     variants: {
       color: {
-        default: 'bg-muted',
-        primary: 'bg-primary',
-        secondary: 'bg-secondary',
-        accent: 'bg-accent',
-        info: 'bg-info',
-        success: 'bg-success',
-        warning: 'bg-warning',
-        error: 'bg-destructive',
+        default: 'toggle-default',
+        primary: 'toggle-primary',
+        secondary: 'toggle-secondary',
+        accent: 'toggle-primary',
+        info: 'toggle-primary',
+        success: 'toggle-success',
+        warning: 'toggle-warning',
+        error: 'toggle-error',
       },
       style: {
-        solid: '',
-        soft: 'opacity-60',
-        outline: 'border-2',
+        solid: 'toggle-solid',
+        soft: 'toggle-soft',
+        outline: 'toggle-outline',
       },
     },
-    compoundVariants: [
-      // Outline style uses border color instead of background
-      {
-        style: 'outline',
-        color: 'primary',
-        className: 'bg-transparent border-primary',
-      },
-      {
-        style: 'outline',
-        color: 'secondary',
-        className: 'bg-transparent border-secondary',
-      },
-      {
-        style: 'outline',
-        color: 'success',
-        className: 'bg-transparent border-success',
-      },
-      {
-        style: 'outline',
-        color: 'warning',
-        className: 'bg-transparent border-warning',
-      },
-      {
-        style: 'outline',
-        color: 'error',
-        className: 'bg-transparent border-destructive',
-      },
-    ],
     defaultVariants: {
       color: 'primary',
       style: 'solid',
@@ -88,7 +60,7 @@ const indicatorVariants = cva(
 )
 
 const buttonTextVariants = cva(
-  'relative z-10 px-4 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer',
+  'relative z-10 px-4 text-sm font-medium rounded-md transition-colors duration-200 cursor-pointer border border-transparent h-full flex items-center justify-center',
   {
     variants: {
       isActive: {
@@ -96,14 +68,14 @@ const buttonTextVariants = cva(
         false: 'text-muted-foreground hover:text-foreground',
       },
       color: {
-        default: '',
-        primary: '',
-        secondary: '',
-        accent: '',
-        info: '',
-        success: '',
-        warning: '',
-        error: '',
+        default: 'toggle-default',
+        primary: 'toggle-primary',
+        secondary: 'toggle-secondary',
+        accent: 'toggle-primary',
+        info: 'toggle-primary',
+        success: 'toggle-success',
+        warning: 'toggle-warning',
+        error: 'toggle-error',
       },
       style: {
         solid: '',
@@ -112,13 +84,13 @@ const buttonTextVariants = cva(
       },
     },
     compoundVariants: [
-      // Active state text colors for solid style
+      // Active text colors for solid style
       {
         isActive: true,
         style: 'solid',
         className: 'text-primary-foreground',
       },
-      // Active state text colors for soft style
+      // Active text colors for soft style
       {
         isActive: true,
         style: 'soft',
@@ -149,7 +121,7 @@ const buttonTextVariants = cva(
         color: 'error',
         className: 'text-destructive',
       },
-      // Active state text colors for outline style
+      // Active text colors for outline style
       {
         isActive: true,
         style: 'outline',
@@ -223,14 +195,18 @@ export function ToggleSwitch({
     <div
       className={cn(toggleSwitchVariants({ color, style }), className)}
       data-toggle-switch={dataAttribute}
+      style={{
+        gridTemplateColumns: `repeat(${options.length}, 1fr)`,
+      }}
     >
       {/* Sliding background indicator */}
       <div
         className={cn(indicatorVariants({ color, style }))}
         data-toggle-indicator
         style={{
-          width: `calc(${100 / options.length}% - 0.5rem)`,
-          transform: `translateX(calc(${validActiveIndex * 100}% + 0.25rem))`,
+          gridColumn: '1 / 2',
+          gridRow: '1',
+          transform: `translateX(calc(${validActiveIndex * 100}% + ${validActiveIndex} * 0.25rem))`,
         }}
       />
 
@@ -247,7 +223,10 @@ export function ToggleSwitch({
               style,
             })
           )}
-          style={{ minWidth: '3.5rem' }}
+          style={{
+            gridColumn: `${index + 1} / ${index + 2}`,
+            gridRow: '1',
+          }}
         >
           {option.label}
         </button>

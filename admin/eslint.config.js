@@ -45,7 +45,9 @@ export default [
         crypto: 'readonly',
         React: 'readonly',
         D1Database: 'readonly',
-        KVNamespace: 'readonly'
+        KVNamespace: 'readonly',
+        sessionStorage: 'readonly',
+        requestAnimationFrame: 'readonly'
       }
     },
     plugins: {
