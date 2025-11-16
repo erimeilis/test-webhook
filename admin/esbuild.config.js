@@ -3,8 +3,20 @@ import { resolve } from 'path'
 import { copyFileSync, mkdirSync } from 'fs'
 
 const isDev = process.env.NODE_ENV === 'development'
+const isWatch = process.argv.includes('--watch')
 
-await esbuild.build({
+// Copy static assets to dist
+function copyAssets() {
+  try {
+    mkdirSync('dist', { recursive: true })
+    copyFileSync('public/favicon.svg', 'dist/favicon.svg')
+    console.log('✅ Static assets copied')
+  } catch (err) {
+    console.error('⚠️  Failed to copy static assets:', err.message)
+  }
+}
+
+const buildOptions = {
   entryPoints: ['src/client/index.ts'],
   bundle: true,
   outfile: 'dist/client.js',
@@ -27,15 +39,17 @@ await esbuild.build({
     '.ts': 'tsx',
     '.tsx': 'tsx',
   },
-})
-
-// Copy static assets to dist
-try {
-  mkdirSync('dist', { recursive: true })
-  copyFileSync('public/favicon.svg', 'dist/favicon.svg')
-  console.log('✅ Static assets copied')
-} catch (err) {
-  console.error('⚠️  Failed to copy static assets:', err.message)
 }
 
-console.log('✅ Client bundle built successfully')
+if (isWatch) {
+  // Watch mode for development
+  const ctx = await esbuild.context(buildOptions)
+  await ctx.watch()
+  copyAssets()
+  console.log('👀 Watching for changes...')
+} else {
+  // Single build
+  await esbuild.build(buildOptions)
+  copyAssets()
+  console.log('✅ Client bundle built successfully')
+}

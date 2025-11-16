@@ -513,7 +513,8 @@ function handleFilterByTag(tag: string) {
 }
 
 function applyTagFilter(tag: string) {
-  const webhookCards = Array.from(document.querySelectorAll('[data-webhook-id]')) as HTMLElement[]
+  // Select only the webhook card containers (div with data-webhook-tags), not the buttons inside them
+  const webhookCards = Array.from(document.querySelectorAll('div[data-webhook-id][data-webhook-tags]')) as HTMLElement[]
 
   webhookCards.forEach((card) => {
     const cardTags = card.dataset.webhookTags || ''
@@ -521,7 +522,6 @@ function applyTagFilter(tag: string) {
 
     if (tagsArray.includes(tag)) {
       card.style.display = ''
-      card.style.backgroundColor = 'var(--muted)'
     } else {
       card.style.display = 'none'
     }

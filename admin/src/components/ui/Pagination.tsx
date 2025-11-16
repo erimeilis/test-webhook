@@ -85,20 +85,20 @@ export function Pagination({
           disabled={currentPage <= 1}
           style="ghost"
           size="xs"
-          className="w-7 h-7 flex items-center justify-center flex-shrink-0"
+          className="min-w-7 h-7 px-2 flex items-center justify-center flex-shrink-0 leading-none"
           title="Previous page"
         >
           ‹
         </Button>
 
         {/* Page Numbers */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
           {pageNumbers.map((page, index) => {
             if (page === '...') {
               return (
                 <span
                   key={`ellipsis-${index}`}
-                  className="px-3 py-1.5 text-sm text-muted-foreground"
+                  className="h-7 px-3 flex items-center text-sm text-muted-foreground leading-none"
                 >
                   ...
                 </span>
@@ -115,7 +115,7 @@ export function Pagination({
                 disabled={isActive}
                 style={isActive ? 'soft' : 'ghost'}
                 size="xs"
-                className="w-7 h-7 flex items-center justify-center flex-shrink-0"
+                className="min-w-7 h-7 px-2 flex items-center justify-center flex-shrink-0 leading-none"
               >
                 {pageNum}
               </Button>
@@ -129,7 +129,7 @@ export function Pagination({
           disabled={currentPage >= totalPages}
           style="ghost"
           size="xs"
-          className="w-7 h-7 flex items-center justify-center flex-shrink-0"
+          className="min-w-7 h-7 px-2 flex items-center justify-center flex-shrink-0 leading-none"
           title="Next page"
         >
           ›

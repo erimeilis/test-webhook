@@ -4,6 +4,8 @@
  */
 
 import { Button } from './ui/Button'
+import { Badge } from './ui/Badge'
+import { getTagColor } from '@/lib/tag-colors'
 import {
   IconDotsVertical,
   IconCopy,
@@ -12,25 +14,6 @@ import {
   IconShare,
   IconTrash,
 } from '@tabler/icons-react'
-
-// Tag color helper - generates consistent colors for tags
-function getTagColorClasses(tag: string): string {
-  const colorVariants = [
-    'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 hover:bg-blue-500/25',
-    'bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/30 hover:bg-green-500/25',
-    'bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 border-yellow-500/30 hover:bg-yellow-500/25',
-    'bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 hover:bg-red-500/25',
-    'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 hover:bg-purple-500/25',
-    'bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-500/30 hover:bg-pink-500/25',
-    'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30 hover:bg-orange-500/25',
-    'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/25',
-  ]
-  let hash = 0
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return colorVariants[Math.abs(hash) % colorVariants.length] ?? colorVariants[0]!
-}
 
 interface WebhookCardProps {
   webhook: {
@@ -92,9 +75,14 @@ export function WebhookCard({ webhook, webhookWorkerUrl, isActive = false, isOwn
                     <a
                       key={index}
                       href={`/dashboard?tag=${encodeURIComponent(trimmedTag)}`}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full font-medium transition-colors cursor-pointer border ${getTagColorClasses(trimmedTag)}`}
                     >
-                      {trimmedTag}
+                      <Badge
+                        variant={getTagColor(trimmedTag)}
+                        size="sm"
+                        className="cursor-pointer hover:opacity-80 transition-opacity"
+                      >
+                        {trimmedTag}
+                      </Badge>
                     </a>
                   ) : null
                 })}
@@ -167,9 +155,14 @@ export function WebhookCard({ webhook, webhookWorkerUrl, isActive = false, isOwn
                 <a
                   key={index}
                   href={`/dashboard?tag=${encodeURIComponent(trimmedTag)}`}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full font-medium transition-colors cursor-pointer border ${getTagColorClasses(trimmedTag)}`}
                 >
-                  {trimmedTag}
+                  <Badge
+                    variant={getTagColor(trimmedTag)}
+                    size="sm"
+                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    {trimmedTag}
+                  </Badge>
                 </a>
               ) : null
             })}
