@@ -15,6 +15,7 @@ import { WebhookFilters } from '@/components/WebhookFilters'
 import type { WebhookData as WebhookDataType } from '@/types/webhooks'
 import { IconPlus, IconX } from '@tabler/icons-react'
 import { getGravatarUrl } from '@/lib/utils/gravatar'
+import { Footer } from '@/components/Footer'
 
 type AppContext = Context<{ Bindings: Bindings; Variables: Variables }>
 
@@ -302,7 +303,7 @@ export async function handleDashboard(c: AppContext) {
 
   // Render component (JSX)
   return c.render(
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm transition-all" data-header>
         <div className="container mx-auto px-4 py-3 max-w-7xl transition-all" data-header-content>
@@ -507,11 +508,17 @@ export async function handleDashboard(c: AppContext) {
                     <>
                       {/* Date Range Filter */}
                       <div className="relative">
-                        <button className="px-3 py-1.5 text-sm bg-background border border-border rounded-lg hover:bg-muted transition-colors">
+                        <Button
+                          color="secondary"
+                          style="outline"
+                          size="sm"
+                          className="h-9"
+                          data-action="toggle-date-range"
+                        >
                           Date Range
-                        </button>
+                        </Button>
                         <div
-                          className="absolute top-full left-0 mt-2 w-64 bg-popover border border-border rounded-lg shadow-lg z-50 hidden"
+                          className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg z-50 hidden backdrop-blur-sm"
                           data-filter-dropdown="date-range"
                         >
                           <div className="p-3 space-y-3">
@@ -533,18 +540,24 @@ export async function handleDashboard(c: AppContext) {
                             </div>
                           </div>
                           <div className="border-t border-border p-2 flex gap-2">
-                            <button
+                            <Button
                               data-filter-clear="date-range"
-                              className="flex-1 px-3 py-1.5 text-sm bg-background hover:bg-muted rounded transition-colors"
+                              color="secondary"
+                              style="ghost"
+                              size="sm"
+                              modifier="wide"
                             >
                               Clear
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               data-filter-apply="date-range"
-                              className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:opacity-90 rounded transition-colors"
+                              color="primary"
+                              style="solid"
+                              size="sm"
+                              modifier="wide"
                             >
                               Apply
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -569,6 +582,7 @@ export async function handleDashboard(c: AppContext) {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

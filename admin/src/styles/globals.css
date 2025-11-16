@@ -322,6 +322,58 @@
     padding: 0;
     border-radius: 9999px;
   }
+
+  /* Toggle Switch - follows same pattern as Button */
+
+  /* Color variants - set toggle variables */
+  .toggle-default {
+    --toggle-bg: var(--card);
+    --toggle-fg: var(--foreground);
+  }
+
+  .toggle-primary {
+    --toggle-bg: var(--primary);
+    --toggle-fg: var(--primary-foreground);
+  }
+
+  .toggle-secondary {
+    --toggle-bg: var(--secondary);
+    --toggle-fg: var(--secondary-foreground);
+  }
+
+  .toggle-success {
+    --toggle-bg: var(--success);
+    --toggle-fg: var(--success-foreground);
+  }
+
+  .toggle-warning {
+    --toggle-bg: var(--warning);
+    --toggle-fg: var(--warning-foreground);
+  }
+
+  .toggle-error {
+    --toggle-bg: var(--error);
+    --toggle-fg: var(--error-foreground);
+  }
+
+  /* Style variants - use variables set by color classes */
+  .toggle-solid {
+    background-color: hsl(var(--toggle-bg));
+    color: hsl(var(--toggle-fg));
+    border-color: hsl(var(--toggle-bg));
+  }
+
+  .toggle-soft {
+    background-color: color-mix(in srgb, hsl(var(--toggle-bg)) 10%, transparent);
+    color: hsl(var(--toggle-bg));
+    border-color: color-mix(in srgb, hsl(var(--toggle-bg)) 15%, transparent);
+  }
+
+  .toggle-outline {
+    background-color: transparent;
+    color: hsl(var(--toggle-bg));
+    border-color: hsl(var(--toggle-bg));
+  }
 }
 
 @layer utilities {
@@ -365,6 +417,10 @@
     border-color: hsl(var(--border));
   }
 
+  .text-muted {
+    color: hsl(var(--muted));
+  }
+
   .text-muted-foreground {
     color: hsl(var(--muted-foreground));
   }
@@ -375,6 +431,34 @@
 
   .hover\:opacity-90:hover {
     opacity: 0.9;
+  }
+
+  .text-success {
+    color: hsl(var(--success));
+  }
+
+  .text-warning {
+    color: hsl(var(--warning));
+  }
+
+  .text-destructive {
+    color: hsl(var(--destructive));
+  }
+
+  .text-secondary {
+    color: hsl(var(--secondary));
+  }
+
+  .text-success-foreground {
+    color: hsl(var(--success-foreground));
+  }
+
+  .text-warning-foreground {
+    color: hsl(var(--warning-foreground));
+  }
+
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
   }
 }
 

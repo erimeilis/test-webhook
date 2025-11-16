@@ -55,10 +55,10 @@ export function Table<T extends Record<string, unknown>>({
     <div className={`w-full ${className}`} data-table-container={tableId} data-total-records={total}>
       {/* Search and Filters */}
       {(searchable || filters) && (
-        <div className="mb-4 flex flex-col sm:flex-row gap-4">
+        <div className="mb-4 flex flex-col sm:flex-row gap-4 items-center sm:items-start">
           {/* Search bar */}
           {searchable && (
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative w-full sm:flex-1 sm:max-w-sm">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -78,14 +78,14 @@ export function Table<T extends Record<string, unknown>>({
                 type="text"
                 data-table-search={tableId}
                 placeholder={searchPlaceholder}
-                className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="w-full h-9 pl-10 pr-4 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               />
             </div>
           )}
 
           {/* Custom filters */}
           {filters && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-start w-full sm:w-auto">
               {filters}
             </div>
           )}

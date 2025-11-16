@@ -69,6 +69,13 @@ function updateTableParams(tableId: string, updates: Partial<ReturnType<typeof g
     params.delete(`${tableId}_date_end`)
   }
 
+  // Save scroll position before reload
+  const tableContainer = document.querySelector(`[data-table-container="${tableId}"]`)
+  if (tableContainer) {
+    const rect = tableContainer.getBoundingClientRect()
+    sessionStorage.setItem('filterScrollPosition', String(window.scrollY + rect.top))
+  }
+
   // Navigate to new URL with full page reload (server-side filtering)
   const newUrl = `${window.location.pathname}?${params.toString()}`
   console.log(`🔗 Navigating to: ${newUrl}`)
@@ -97,6 +104,16 @@ function init() {
   const tag = urlParams.get('tag')
   if (tag) {
     applyTagFilter(tag)
+  }
+
+  // Restore scroll position after filter reload
+  const savedScrollPosition = sessionStorage.getItem('filterScrollPosition')
+  if (savedScrollPosition) {
+    // Use requestAnimationFrame to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: Number(savedScrollPosition), behavior: 'instant' })
+      sessionStorage.removeItem('filterScrollPosition')
+    })
   }
 
   // Browser back/forward will trigger full page reload automatically
@@ -160,6 +177,10 @@ function setupEventListeners() {
       case 'toggle-user-menu':
         handleToggleUserMenu()
         break
+
+      case 'toggle-date-range':
+        handleToggleDateRange()
+        break
     }
   })
 
@@ -222,6 +243,14 @@ function setupEventListeners() {
           menu.classList.add('hidden')
         }
       })
+    }
+
+    // Close date range dropdown if clicking outside
+    if (!target.closest('[data-action="toggle-date-range"]') && !target.closest('[data-filter-dropdown="date-range"]')) {
+      const dropdown = document.querySelector('[data-filter-dropdown="date-range"]') as HTMLElement
+      if (dropdown && !dropdown.classList.contains('hidden')) {
+        dropdown.classList.add('hidden')
+      }
     }
   })
 }
@@ -558,6 +587,18 @@ function handleToggleUserMenu() {
     menu.classList.remove('hidden')
   } else {
     menu.classList.add('hidden')
+  }
+}
+
+function handleToggleDateRange() {
+  const dropdown = document.querySelector('[data-filter-dropdown="date-range"]') as HTMLElement
+  if (!dropdown) return
+
+  // Toggle visibility
+  if (dropdown.classList.contains('hidden')) {
+    dropdown.classList.remove('hidden')
+  } else {
+    dropdown.classList.add('hidden')
   }
 }
 
