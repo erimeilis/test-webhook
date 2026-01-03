@@ -1,11 +1,12 @@
 {
   "name": "webhook-admin",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Webhook system admin panel built with Hono and React",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "npm run build:info && concurrently \"npm:dev:wrangler\" \"npm:dev:client\" \"npm:dev:css\"",
+    "dev:full": "npm run build:info && concurrently \"npm:dev:wrangler\" \"npm:dev:client\" \"npm:dev:css\"",
     "dev:wrangler": "wrangler dev --port 5173 --local --persist-to ../.wrangler-shared",
     "dev:client": "NODE_ENV=development node esbuild.config.js --watch",
     "dev:css": "postcss src/styles/globals.css -o dist/styles.css --watch",

@@ -21,6 +21,11 @@ admin/src/lib/build-info.ts
 .env.local
 .env.production
 .env.*.local
+.dev.vars
+
+# Generated wrangler configs (use .template files)
+admin/wrangler.toml
+webhook-worker/wrangler.toml
 
 # IDE
 .idea/
